@@ -198,7 +198,25 @@ def inject_theme(theme_name: str) -> None:
             color: {colors['text']} !important;
             fill: {colors['text']} !important;
         }}
+        .stFormSubmitButton > button {{
+            background: {colors['surface_alt']} !important;
+            color: {colors['text']} !important;
+            border: 1px solid {colors['border']} !important;
+        }}
+        .stFormSubmitButton > button:hover {{
+            background: {colors['primary']} !important;
+            color: {colors['primary_text']} !important;
+            border-color: {colors['primary']} !important;
+        }}
+        [data-testid="stToolbar"] button,
+        [data-testid="stToolbar"] svg,
+        [data-testid="stElementToolbar"] button,
+        [data-testid="stElementToolbar"] svg {{
+            color: {colors['text']} !important;
+            fill: {colors['text']} !important;
+        }}
         .history-entry {{
+            position: relative;
             background: {colors['surface']};
             border: 1px solid {colors['border']};
             border-radius: 12px;
@@ -212,6 +230,27 @@ def inject_theme(theme_name: str) -> None:
         .history-sub {{
             color: {colors['muted']};
             font-size: 0.92rem;
+        }}
+        .history-tooltip {{
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            position: absolute;
+            left: 1rem;
+            right: 1rem;
+            top: calc(100% + 0.35rem);
+            z-index: 30;
+            background: {colors['surface_alt']};
+            color: {colors['text']};
+            border: 1px solid {colors['border']};
+            border-radius: 10px;
+            padding: 0.7rem 0.8rem;
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+            white-space: normal;
+        }}
+        .history-entry:hover .history-tooltip {{
+            visibility: visible;
+            opacity: 1;
         }}
         </style>
         """,
@@ -238,14 +277,20 @@ if "search_page" not in st.session_state:
     st.session_state.search_page = 1
 if "theme_mode" not in st.session_state:
     st.session_state.theme_mode = "Dark"
+if "theme_toggle" not in st.session_state:
+    st.session_state.theme_toggle = st.session_state.theme_mode == "Dark"
 
+inject_theme("Dark" if st.session_state.theme_toggle else "Light")
 title_col, theme_col = st.columns([8, 1.4])
 with title_col:
     st.title("Masque de saisie des exigences (Excel)")
 with theme_col:
-    theme_is_dark = st.toggle("Dark", value=st.session_state.theme_mode == "Dark")
-st.session_state.theme_mode = "Dark" if theme_is_dark else "Light"
-inject_theme(st.session_state.theme_mode)
+    theme_is_dark = st.toggle("Dark", value=st.session_state.theme_toggle, key="theme_toggle_control")
+if theme_is_dark != st.session_state.theme_toggle:
+    st.session_state.theme_toggle = theme_is_dark
+    st.session_state.theme_mode = "Dark" if theme_is_dark else "Light"
+    st.rerun()
+st.session_state.theme_mode = "Dark" if st.session_state.theme_toggle else "Light"
 
 if st.sidebar.button("Exigences", use_container_width=True):
     st.session_state.current_page = "exigences"
@@ -432,13 +477,13 @@ def render_history_entries(entries: list[Dict[str, str]]) -> None:
     cards = []
     for entry in entries:
         details = entry.get("changes", "") or entry.get("action", "")
-        tooltip = "Survolez pour voir le détail de la mise à jour" if entry.get("action") == "UPDATE" else details
-        title_attr = escape(details if entry.get("action") == "UPDATE" else tooltip, quote=True)
+        tooltip_body = escape(details, quote=True).replace(" | ", "<br>")
         cards.append(
             f"""
-            <div class="history-entry" title="{title_attr}">
+            <div class="history-entry">
                 <div class="history-title">{escape(entry.get('action', ''))} — {escape(entry.get('number', ''))}</div>
                 <div class="history-sub">{escape(entry.get('timestamp', ''))} · {escape(entry.get('user', ''))} · {escape(entry.get('sheet', ''))}</div>
+                <div class="history-tooltip">{tooltip_body}</div>
             </div>
             """
         )
@@ -518,19 +563,6 @@ if st.session_state.current_page == "exigences":
         if st.session_state.search_page > total_pages:
             st.session_state.search_page = total_pages
 
-        page_col1, page_col2, page_col3 = st.columns([1, 2, 1])
-        with page_col1:
-            if st.button("← Page précédente", disabled=st.session_state.search_page <= 1, use_container_width=True):
-                st.session_state.search_page -= 1
-        with page_col2:
-            st.markdown(
-                f"<div style='text-align:center; padding-top:0.4rem;'>Page {st.session_state.search_page} / {total_pages}</div>",
-                unsafe_allow_html=True,
-            )
-        with page_col3:
-            if st.button("Page suivante →", disabled=st.session_state.search_page >= total_pages, use_container_width=True):
-                st.session_state.search_page += 1
-
         start = (st.session_state.search_page - 1) * PAGE_SIZE
         visible_rows = rows[start : start + PAGE_SIZE]
         st.caption(f"{len(rows)} exigence(s) trouvée(s). Affichage de {len(visible_rows)} résultat(s) sur cette page.")
@@ -545,7 +577,22 @@ if st.session_state.current_page == "exigences":
                     st.session_state.preview_data = None
                     st.session_state.current_page = "edit_requirement"
                     st.rerun()
-        else:
+
+        page_col1, page_col2, page_col3 = st.columns([1, 2, 1])
+        with page_col1:
+            if st.button("← Page précédente", disabled=st.session_state.search_page <= 1, use_container_width=True):
+                st.session_state.search_page -= 1
+                st.rerun()
+        with page_col2:
+            st.markdown(
+                f"<div style='text-align:center; padding-top:0.4rem;'>Page {st.session_state.search_page} / {total_pages}</div>",
+                unsafe_allow_html=True,
+            )
+        with page_col3:
+            if st.button("Page suivante →", disabled=st.session_state.search_page >= total_pages, use_container_width=True):
+                st.session_state.search_page += 1
+                st.rerun()
+        if not visible_rows:
             st.info("Aucune exigence ne correspond aux filtres courants.")
     except ExcelHandlerError as exc:
         st.error(str(exc))

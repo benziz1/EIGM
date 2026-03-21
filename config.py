@@ -9,6 +9,9 @@ DEFAULT_WORKBOOK = BASE_DIR / "requirements_db.xlsx"
 DEFAULT_SHEET = "V00"
 DATA_START_ROW = 7
 HEADER_ROWS = (5, 6)
+NUMBER_PREFIX = "REQ"
+NUMBER_SUFFIX_DEFAULT = 1
+TYPE_FREE_OPTION = "<Saisie libre>"
 
 
 @dataclass(frozen=True)
@@ -25,7 +28,7 @@ COLUMN_DEFINITIONS: List[ColumnConfig] = [
     ColumnConfig("B", "number", "NUMBER", required=True),
     ColumnConfig("C", "french_name", "FRENCH NAME", required=True),
     ColumnConfig("D", "english_name", "ENGLISH NAME", required=True),
-    ColumnConfig("E", "type", "TYPE", dropdown=True),
+    ColumnConfig("E", "type", "TYPE", required=True, dropdown=True),
     ColumnConfig("F", "iadt", "IADT", dropdown=True),
     ColumnConfig("G", "chapter", "CHAPTER", dropdown=True),
     ColumnConfig("H", "category", "CATEGORY", dropdown=True),
@@ -75,6 +78,7 @@ FIELD_KEYS = [
 ]
 
 DEFAULT_SELECT_OPTIONS = {
+    "type": ["GEN", "AUT"],
     "applicability": ["APPLICABLE", "NON APPLICABLE"],
     "coverage": ["COMPLIANT", "NOT COMPLIANT", "PARTIAL"],
     "sor": ["", "OK", "KO", "N/A"],

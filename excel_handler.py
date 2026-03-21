@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from copy import copy
 from pathlib import Path
 from typing import Dict, List
@@ -15,6 +16,8 @@ from config import (
     DATA_START_ROW,
     DEFAULT_SELECT_OPTIONS,
     FIELD_KEYS,
+    NUMBER_PREFIX,
+    NUMBER_SUFFIX_DEFAULT,
 )
 
 
@@ -45,6 +48,37 @@ class ExcelHandler:
             if any(sheet[f"{cfg.letter}{row}"].value not in (None, "") for cfg in COLUMN_DEFINITIONS):
                 return row
         return DATA_START_ROW - 1
+
+    @staticmethod
+    def _next_index(sheet: Worksheet) -> int:
+        max_index = 0
+        for row in range(DATA_START_ROW, sheet.max_row + 1):
+            current = sheet[f"A{row}"].value
+            try:
+                max_index = max(max_index, int(current))
+            except (TypeError, ValueError):
+                continue
+        return max_index + 1 if max_index else 1
+
+    @staticmethod
+    def _normalize_type(type_value: str) -> str:
+        normalized = re.sub(r"[^A-Za-z0-9]+", "", type_value.upper())
+        if not normalized:
+            raise ExcelHandlerError("Le TYPE d'identification est obligatoire pour générer le NUMBER.")
+        return normalized
+
+    @classmethod
+    def _build_number(cls, type_value: str, next_index: int) -> str:
+        normalized_type = cls._normalize_type(type_value)
+        return f"{NUMBER_PREFIX}_{normalized_type}_{next_index:03d}_{NUMBER_SUFFIX_DEFAULT:02d}"
+
+    def preview_next_number(self, sheet_name: str, type_value: str) -> str:
+        wb = self._load_workbook()
+        sheet = self._get_sheet(wb, sheet_name)
+        next_index = self._next_index(sheet)
+        number = self._build_number(type_value, next_index)
+        wb.close()
+        return number
 
     def list_sheets(self) -> List[str]:
         wb = self._load_workbook()
@@ -98,30 +132,24 @@ class ExcelHandler:
             col = COLUMNS_BY_KEY[key].letter
             sheet[f"{col}{row}"] = payload.get(key, "")
 
-    @staticmethod
-    def _next_index(sheet: Worksheet, last_row: int) -> int:
-        if last_row < DATA_START_ROW:
-            return 1
-        current = sheet[f"A{last_row}"].value
-        try:
-            return int(current) + 1
-        except (TypeError, ValueError):
-            return last_row - DATA_START_ROW + 2
-
     def add_requirement(self, sheet_name: str, payload: Dict[str, str]) -> int:
         wb = self._load_workbook()
         sheet = self._get_sheet(wb, sheet_name)
-        last_row = self._last_data_row(sheet)
-        new_row = max(last_row + 1, DATA_START_ROW)
-        if last_row >= DATA_START_ROW:
-            self._copy_row_style_and_formulas(sheet, last_row, new_row)
+        insert_row = DATA_START_ROW
+        next_index = self._next_index(sheet)
+        payload_with_number = dict(payload)
+        payload_with_number["number"] = self._build_number(payload_with_number.get("type", ""), next_index)
 
-        sheet[f"A{new_row}"] = self._next_index(sheet, last_row)
-        self._apply_payload(sheet, new_row, payload)
+        sheet.insert_rows(insert_row, amount=1)
+        if sheet.max_row >= insert_row + 1:
+            self._copy_row_style_and_formulas(sheet, insert_row + 1, insert_row)
+
+        sheet[f"A{insert_row}"] = next_index
+        self._apply_payload(sheet, insert_row, payload_with_number)
 
         wb.save(self.workbook_path)
         wb.close()
-        return new_row
+        return insert_row
 
     def search_requirements(self, sheet_name: str, keyword: str) -> List[Dict[str, str]]:
         wb = self._load_workbook()

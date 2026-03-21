@@ -5,10 +5,14 @@ Application locale Streamlit pour saisir/mettre à jour des exigences dans un fi
 ## Fonctionnalités
 
 - Interface unique de saisie par blocs fonctionnels.
-- Ajout de ligne automatique à partir de la première ligne vide (à partir de la ligne 7).
+- Les nouvelles exigences sont insérées **tout en haut de la zone de données** (ligne 7), en décalant les lignes existantes vers le bas.
+- Les lignes vides plus bas dans l'onglet sont ignorées pendant l'ajout.
+- Le champ `NUMBER` n'est plus saisi manuellement : il est généré automatiquement à partir du `TYPE` sélectionné.
+- Le format généré est `REQ_type_XXX_XX`, par exemple `REQ_GEN_012_01`.
+- Le `TYPE` d'identification propose `GEN`, `AUT` ou une saisie libre.
 - Prévisualisation avant insertion.
-- Copie du style/format/formules de la ligne précédente vers la nouvelle ligne.
-- Incrémentation automatique de la colonne `A (#)`.
+- Copie du style/format/formules de la ligne précédemment en tête vers la nouvelle ligne.
+- Incrémentation automatique de la colonne `A (#)` à partir du maximum déjà présent.
 - Recopie des formules (dont `Q: DECISION`) via translation de références.
 - Validation des champs obligatoires.
 - Listes déroulantes dynamiques (valeurs existantes de l'onglet + valeurs par défaut).
@@ -51,18 +55,22 @@ streamlit run app.py
 ## Utilisation
 
 1. Vérifier dans la barre latérale le chemin du fichier Excel et l'onglet cible (`V00` par défaut).
-2. Remplir les champs par blocs.
-3. Cliquer **Prévisualiser la ligne avant insertion**.
-4. Cliquer **Ajouter la ligne**.
-5. En cas de succès, la ligne est écrite dans la première ligne vide et journalisée.
+2. Sélectionner le `TYPE` d'identification (`GEN`, `AUT` ou saisie libre).
+3. Vérifier le `NUMBER` généré automatiquement dans le bloc 1.
+4. Remplir les autres champs par blocs.
+5. Cliquer **Prévisualiser la ligne avant insertion**.
+6. Cliquer **Ajouter la ligne**.
+7. En cas de succès, la ligne est écrite en tête de la zone de données et journalisée.
 
 ## Comportement Excel
 
 - Les en-têtes (lignes 5-6) ne sont jamais modifiés.
 - Les données commencent à la ligne 7.
-- La nouvelle ligne réutilise la ligne précédente comme modèle (style + format + formules).
+- Chaque nouvel ajout insère une nouvelle ligne en 7 et pousse les anciennes lignes vers le bas.
+- La nouvelle ligne réutilise la ligne qui était précédemment en tête comme modèle (style + format + formules).
 - La formule en Q est recopiée et adaptée automatiquement (translation de référence).
 - Les champs saisis utilisateur écrasent uniquement les colonnes métiers prévues.
+- Le `NUMBER` suit la forme `REQ_<TYPE>_<index sur 3 chiffres>_01`.
 
 ## Limites connues
 
@@ -72,6 +80,5 @@ streamlit run app.py
 ## Personnalisation rapide
 
 - `config.py` : mapping colonnes, champs obligatoires, options par défaut, sections d'interface.
-- `excel_handler.py` : logique d'accès Excel (ajout, recherche, update, archivage).
+- `excel_handler.py` : logique d'accès Excel (ajout en tête, génération du NUMBER, recherche, update, archivage).
 - `utils.py` : sanitation, validation, journalisation.
-

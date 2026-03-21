@@ -4,7 +4,7 @@ Application locale Streamlit pour saisir/mettre à jour des exigences dans un fi
 
 ## Fonctionnalités
 
-- Interface unique de saisie par blocs fonctionnels.
+- Interface unique de saisie par blocs fonctionnels, avec thèmes clair/sombre en nuances de bleu.
 - Les nouvelles exigences sont insérées **tout en haut de la zone de données** (ligne 7), en décalant les lignes existantes vers le bas.
 - Les lignes vides plus bas dans l'onglet sont ignorées pendant l'ajout.
 - Le champ `NUMBER` n'est plus saisi manuellement : il est généré automatiquement à partir du `TYPE` sélectionné.
@@ -64,7 +64,8 @@ streamlit run app.py
 6. Cliquer **Ajouter la ligne**.
 7. En cas de succès, la ligne est écrite en tête de la zone de données et journalisée.
 8. Depuis le bouton latéral **Exigences**, ouvrir la page de recherche, naviguer dans les pages de 5 résultats, puis cliquer directement sur l'exigence à modifier pour ouvrir sa page dédiée.
-9. Utiliser le bouton `+` dans la rubrique **Exigences** pour créer une nouvelle exigence.
+9. Utiliser le grand bouton bleu **Ajouter une exigence** dans la rubrique **Exigences** pour créer une nouvelle exigence.
+10. Choisir au besoin le thème **Light** ou **Dark** en barre latérale.
 
 ## Comportement Excel
 

@@ -22,6 +22,103 @@ from utils import append_history, sanitize_payload, validate_required
 
 PAGE_SIZE = 5
 
+THEMES = {
+    "Light": {
+        "bg": "#eef4fb",
+        "surface": "#ffffff",
+        "surface_alt": "#dfeaf7",
+        "text": "#12324a",
+        "muted": "#5d7891",
+        "border": "#bfd2e6",
+        "primary": "#4f7ea8",
+        "primary_hover": "#436d92",
+        "primary_text": "#f7fbff",
+    },
+    "Dark": {
+        "bg": "#0f1a26",
+        "surface": "#152435",
+        "surface_alt": "#1d3248",
+        "text": "#e8f1f8",
+        "muted": "#9fb4c7",
+        "border": "#294761",
+        "primary": "#5f89b3",
+        "primary_hover": "#74a0cb",
+        "primary_text": "#f7fbff",
+    },
+}
+
+
+def inject_theme(theme_name: str) -> None:
+    colors = THEMES[theme_name]
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background: {colors['bg']};
+            color: {colors['text']};
+        }}
+        [data-testid="stAppViewContainer"] {{
+            background: linear-gradient(180deg, {colors['bg']} 0%, {colors['surface_alt']} 100%);
+        }}
+        [data-testid="stSidebar"] {{
+            background: {colors['surface']};
+            border-right: 1px solid {colors['border']};
+        }}
+        [data-testid="stHeader"] {{
+            background: transparent;
+        }}
+        .block-container {{
+            padding-top: 1.8rem;
+        }}
+        h1, h2, h3, h4, h5, h6, p, label, span, div {{
+            color: {colors['text']};
+        }}
+        [data-testid="stForm"], .stAlert, [data-testid="stDataFrame"], .stTextInput, .stTextArea, .stSelectbox {{
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 14px;
+        }}
+        .stButton > button {{
+            border-radius: 12px;
+            border: 1px solid {colors['border']};
+            color: {colors['text']};
+            background: {colors['surface']};
+            min-height: 2.8rem;
+        }}
+        .stButton > button:hover {{
+            border-color: {colors['primary']};
+            color: {colors['primary']};
+        }}
+        .stButton > button[kind="primary"] {{
+            background: {colors['primary']};
+            color: {colors['primary_text']};
+            border: 1px solid {colors['primary']};
+            font-size: 1.05rem;
+            font-weight: 700;
+            min-height: 4rem;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+        }}
+        .stButton > button[kind="primary"]:hover {{
+            background: {colors['primary_hover']};
+            border-color: {colors['primary_hover']};
+            color: {colors['primary_text']};
+        }}
+        .theme-card {{
+            background: {colors['surface']};
+            border: 1px solid {colors['border']};
+            border-radius: 16px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 1rem;
+            color: {colors['text']};
+        }}
+        .theme-muted {{
+            color: {colors['muted']};
+            font-size: 0.95rem;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
 st.set_page_config(page_title="Requirement Entry", layout="wide")
 st.title("Masque de saisie des exigences (Excel)")
 
@@ -41,6 +138,20 @@ if "current_page" not in st.session_state:
     st.session_state.current_page = "exigences"
 if "search_page" not in st.session_state:
     st.session_state.search_page = 1
+if "theme_mode" not in st.session_state:
+    st.session_state.theme_mode = "Light"
+
+st.sidebar.markdown(
+    '<div class="theme-card"><strong>Thème</strong><div class="theme-muted">Nuances bleues douces pour le confort visuel.</div></div>',
+    unsafe_allow_html=True,
+)
+st.session_state.theme_mode = st.sidebar.radio(
+    "Mode d'affichage",
+    ["Light", "Dark"],
+    index=0 if st.session_state.theme_mode == "Light" else 1,
+    horizontal=True,
+)
+inject_theme(st.session_state.theme_mode)
 
 if st.sidebar.button("Exigences", use_container_width=True):
     st.session_state.current_page = "exigences"
@@ -252,12 +363,10 @@ if st.session_state.current_page == "saisie":
             st.error(str(exc))
 
 if st.session_state.current_page == "exigences":
-    header_col, plus_col = st.columns([12, 1])
-    with header_col:
-        st.subheader("Exigences")
-    with plus_col:
-        if st.button("+", help="Ajouter une nouvelle exigence"):
-            go_to_add_page()
+    st.subheader("Exigences")
+    st.markdown('<div class="theme-muted">Recherche, filtrage et accès rapide à la création d\'une nouvelle exigence.</div>', unsafe_allow_html=True)
+    if st.button("Ajouter une exigence", type="primary", use_container_width=True):
+        go_to_add_page()
 
     filter_col1, filter_col2, filter_col3 = st.columns(3)
     with filter_col1:

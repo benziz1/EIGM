@@ -1,5 +1,4 @@
 from __future__ import annotations
-import base64
 from html import escape
 from math import ceil
 from pathlib import Path
@@ -257,15 +256,11 @@ def inject_theme(theme_name: str) -> None:
 def render_logo_banner() -> None:
     logo_path = Path("assets/thales_logo.svg")
     if logo_path.exists():
-        encoded_logo = base64.b64encode(logo_path.read_bytes()).decode("ascii")
-        st.markdown(
-            f"""
-            <div class="brand-banner">
-                <img src="data:image/svg+xml;base64,{encoded_logo}" alt="THALES logo" />
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        _, centered_col, _ = st.columns([1, 8, 1])
+        with centered_col:
+            st.markdown('<div class="brand-banner">', unsafe_allow_html=True)
+            st.image(str(logo_path), use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
         return
     st.markdown("## THALES", unsafe_allow_html=False)
 st.set_page_config(page_title="Requirement Entry", layout="wide")

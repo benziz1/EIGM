@@ -233,36 +233,10 @@ def inject_theme(theme_name: str) -> None:
             visibility: visible;
             opacity: 1;
         }}
-        .brand-banner {{
-            position: sticky;
-            top: 0;
-            z-index: 40;
-            padding: 0.35rem 0 1rem;
-            margin-bottom: 0.85rem;
-            background: transparent;
-            border: none;
-            border-radius: 0;
-            box-shadow: none;
-        }}
-        .brand-banner img {{
-            display: block;
-            width: min(760px, 100%);
-            height: auto;
-        }}
         </style>
         """,
         unsafe_allow_html=True,
     )
-def render_logo_banner() -> None:
-    logo_path = Path("assets/thales_logo.svg")
-    if logo_path.exists():
-        _, centered_col, _ = st.columns([1, 8, 1])
-        with centered_col:
-            st.markdown('<div class="brand-banner">', unsafe_allow_html=True)
-            st.image(str(logo_path), use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-        return
-    st.markdown("## THALES", unsafe_allow_html=False)
 st.set_page_config(page_title="Requirement Entry", layout="wide")
 workbook_path = Path(st.sidebar.text_input("Fichier Excel", str(DEFAULT_WORKBOOK)))
 handler = ExcelHandler(workbook_path)
@@ -282,7 +256,6 @@ if "theme_mode" not in st.session_state:
 if "theme_toggle" not in st.session_state:
     st.session_state.theme_toggle = st.session_state.theme_mode == "Dark"
 inject_theme("Dark" if st.session_state.theme_toggle else "Light")
-render_logo_banner()
 title_col, theme_col = st.columns([8, 1.4])
 with title_col:
     st.title("Masque de saisie des exigences (Excel)")

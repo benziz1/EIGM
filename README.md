@@ -18,7 +18,7 @@ Application locale Streamlit pour saisir/mettre à jour des exigences dans un fi
 - Recopie des formules (dont `Q: DECISION`) via translation de références.
 - Validation des champs obligatoires.
 - Listes déroulantes dynamiques (valeurs existantes de l'onglet + valeurs par défaut).
-- Mode édition enrichi avec liste complète des exigences, filtres de recherche, chargement dans le formulaire et sauvegarde.
+- Mode édition accessible depuis le bandeau latéral gauche, avec recherche filtrée, liste cliquable des exigences et formulaire de modification dédié.
 - Mode archivage sécurisé (marquage `[ARCHIVED]` sur le nom FR).
 - Historique CSV (`history_log.csv`) : date, utilisateur, action, onglet, ligne.
 
@@ -63,7 +63,7 @@ streamlit run app.py
 5. Cliquer **Prévisualiser la ligne avant insertion**.
 6. Cliquer **Ajouter la ligne**.
 7. En cas de succès, la ligne est écrite en tête de la zone de données et journalisée.
-8. En mode édition, utiliser la recherche globale et les filtres pour afficher la liste des exigences, en charger une puis enregistrer ses modifications.
+8. Depuis le bouton latéral **Exigences**, ouvrir la page de recherche, filtrer les résultats puis cliquer directement sur l'exigence à modifier.
 
 ## Comportement Excel
 
@@ -75,7 +75,7 @@ streamlit run app.py
 - Les champs saisis utilisateur écrasent uniquement les colonnes métiers prévues.
 - Les jalons `SOR` à `FAI` sont alimentés par cases à cocher et écrivent `X` si cochés, sinon une cellule vide.
 - Le `NUMBER` suit la forme `REQ_<TYPE>_<index sur 3 chiffres>_00` à la création.
-- Lors d'une modification, les deux derniers chiffres du `NUMBER` sont incrémentés automatiquement (`00` → `01` → `02`, etc.).
+- Lors d'une modification, le `NUMBER` garde exactement la même base (`REQ_<TYPE>_<index>`) et seuls les deux derniers chiffres sont incrémentés (`00` → `01` → `02`, etc.).
 
 ## Limites connues
 

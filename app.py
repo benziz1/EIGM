@@ -33,7 +33,15 @@ except ExcelHandlerError as exc:
 
 sheet_index = sheets.index(DEFAULT_SHEET) if DEFAULT_SHEET in sheets else 0
 sheet_name = st.sidebar.selectbox("Onglet cible", sheets, index=sheet_index)
-mode = st.sidebar.radio("Mode", ["Ajout", "Édition", "Archivage"], horizontal=True)
+
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "saisie"
+if st.sidebar.button("Nouvelle exigence", use_container_width=True):
+    st.session_state.current_page = "saisie"
+if st.sidebar.button("Exigences", use_container_width=True):
+    st.session_state.current_page = "exigences"
+if st.sidebar.button("Archivage", use_container_width=True):
+    st.session_state.current_page = "archivage"
 
 try:
     options = handler.get_dynamic_options(sheet_name)
@@ -49,8 +57,16 @@ if "selected_row" not in st.session_state:
     st.session_state.selected_row = None
 
 
+TEXTAREA_KEYS = {"french_resume", "english_resume", "remarks_n", "remarks_p", "remarks_r"}
+required = [key for key in FIELD_KEYS if COLUMNS_BY_KEY[key].required and key != "number"]
+
+
+def is_editing() -> bool:
+    return st.session_state.current_page == "exigences" and st.session_state.selected_row is not None
+
+
 def compute_number_preview(type_value: str, fallback_number: str = "") -> str:
-    if mode == "Édition" and st.session_state.selected_row:
+    if is_editing():
         current_number = fallback_number or st.session_state.form_data.get("number", "")
         if not current_number:
             return ""
@@ -64,12 +80,6 @@ def compute_number_preview(type_value: str, fallback_number: str = "") -> str:
         return handler.preview_next_number(sheet_name, type_value)
     except ExcelHandlerError:
         return fallback_number
-
-
-st.caption(
-    "Les nouvelles exigences sont toujours insérées en tête de la zone de données (ligne 7),"
-    " sans utiliser les lignes vides existantes plus bas dans l'onglet."
-)
 
 
 def draw_type_selector(default: str) -> str:
@@ -100,16 +110,13 @@ def draw_type_selector(default: str) -> str:
     return selected
 
 
-TEXTAREA_KEYS = {"french_resume", "english_resume", "remarks_n", "remarks_p", "remarks_r"}
-
-
 def draw_input(key: str) -> str:
     label = COLUMNS_BY_KEY[key].label
     default = st.session_state.form_data.get(key, "")
 
     if key == "number":
         preview_number = compute_number_preview(st.session_state.form_data.get("type", ""), default)
-        help_text = "En création : suffixe 00. En modification : le suffixe final est incrémenté automatiquement."
+        help_text = "En création : suffixe 00. En modification : seul le dernier nombre est incrémenté automatiquement."
         st.text_input("NUMBER (généré automatiquement)", value=preview_number, disabled=True, help=help_text)
         return preview_number
 
@@ -142,63 +149,86 @@ def draw_input(key: str) -> str:
     return st.text_input(f"{label} ({key})", value=default)
 
 
-with st.form("requirement_form"):
-    collected: Dict[str, str] = {}
-    for section, keys in SECTION_LAYOUT.items():
-        st.subheader(section)
-        if section == "Bloc 5 — Jalons projet":
-            milestone_cols = st.columns(len(keys))
+st.caption(
+    "Les nouvelles exigences sont toujours insérées en tête de la zone de données (ligne 7),"
+    " sans utiliser les lignes vides existantes plus bas dans l'onglet."
+)
+
+
+def render_requirement_form(form_key: str, submit_label: str, preview_label: str) -> tuple[bool, bool, bool, Dict[str, str]]:
+    with st.form(form_key):
+        collected: Dict[str, str] = {}
+        for section, keys in SECTION_LAYOUT.items():
+            st.subheader(section)
+            if section == "Bloc 5 — Jalons projet":
+                milestone_cols = st.columns(len(keys))
+                for idx, key in enumerate(keys):
+                    with milestone_cols[idx]:
+                        collected[key] = draw_input(key)
+                continue
+
+            cols = st.columns(2)
             for idx, key in enumerate(keys):
-                with milestone_cols[idx]:
+                with cols[idx % 2]:
                     collected[key] = draw_input(key)
-            continue
 
-        cols = st.columns(2)
-        for idx, key in enumerate(keys):
-            with cols[idx % 2]:
-                collected[key] = draw_input(key)
+        preview_btn = st.form_submit_button(preview_label)
+        submit_btn = st.form_submit_button(submit_label)
+        clear_btn = st.form_submit_button("Vider le formulaire")
+    return preview_btn, submit_btn, clear_btn, collected
 
-    preview_btn = st.form_submit_button("Prévisualiser la ligne avant insertion")
-    add_btn = st.form_submit_button("Ajouter la ligne")
-    clear_btn = st.form_submit_button("Vider le formulaire")
 
-required = [key for key in FIELD_KEYS if COLUMNS_BY_KEY[key].required and key != "number"]
-
-if clear_btn:
-    st.session_state.form_data = {key: "" for key in FIELD_KEYS}
-    st.session_state.preview_data = None
-    st.session_state.selected_row = None
-    st.success("Formulaire vidé.")
-
-if preview_btn or add_btn:
+def process_form_submission(collected: Dict[str, str]) -> tuple[Dict[str, str], list[str]]:
     cleaned = sanitize_payload(collected)
     cleaned["number"] = compute_number_preview(cleaned.get("type", ""), cleaned.get("number", ""))
     st.session_state.form_data = cleaned
     errors = validate_required(cleaned, required)
     if not cleaned.get("number"):
         errors.append("Le NUMBER n'a pas pu être généré automatiquement. Vérifiez le TYPE.")
-    if errors:
-        st.error("\n".join(errors))
-    else:
-        st.session_state.preview_data = cleaned
+    return cleaned, errors
 
-if st.session_state.preview_data:
-    st.markdown("### Prévisualisation")
-    st.dataframe([st.session_state.preview_data], use_container_width=True)
 
-if add_btn and st.session_state.preview_data:
-    try:
-        row = handler.add_requirement(sheet_name, st.session_state.preview_data)
-        append_history(LOG_FILE, "ADD", row, st.session_state.preview_data.get("number", ""), sheet_name)
-        st.success(f"Ligne ajoutée en tête avec succès : {sheet_name}!{row}")
+def render_preview() -> None:
+    if st.session_state.preview_data:
+        st.markdown("### Prévisualisation")
+        st.dataframe([st.session_state.preview_data], use_container_width=True)
+
+
+if st.session_state.current_page == "saisie":
+    st.subheader("Saisie d'une nouvelle exigence")
+    preview_btn, add_btn, clear_btn, collected = render_requirement_form(
+        form_key="add_requirement_form",
+        submit_label="Ajouter la ligne",
+        preview_label="Prévisualiser la ligne avant insertion",
+    )
+
+    if clear_btn:
         st.session_state.form_data = {key: "" for key in FIELD_KEYS}
         st.session_state.preview_data = None
-    except ExcelHandlerError as exc:
-        st.error(str(exc))
+        st.session_state.selected_row = None
+        st.success("Formulaire vidé.")
 
-if mode == "Édition":
-    st.markdown("---")
-    st.subheader("Modification d'exigences")
+    if preview_btn or add_btn:
+        cleaned, errors = process_form_submission(collected)
+        if errors:
+            st.error("\n".join(errors))
+        else:
+            st.session_state.preview_data = cleaned
+
+    render_preview()
+
+    if add_btn and st.session_state.preview_data:
+        try:
+            row = handler.add_requirement(sheet_name, st.session_state.preview_data)
+            append_history(LOG_FILE, "ADD", row, st.session_state.preview_data.get("number", ""), sheet_name)
+            st.success(f"Ligne ajoutée en tête avec succès : {sheet_name}!{row}")
+            st.session_state.form_data = {key: "" for key in FIELD_KEYS}
+            st.session_state.preview_data = None
+        except ExcelHandlerError as exc:
+            st.error(str(exc))
+
+if st.session_state.current_page == "exigences":
+    st.subheader("Recherche et modification d'exigences")
     filter_col1, filter_col2, filter_col3 = st.columns(3)
     with filter_col1:
         edit_keyword = st.text_input("Recherche globale", placeholder="NUMBER, nom FR, nom EN...")
@@ -223,39 +253,61 @@ if mode == "Édition":
             applicability_filter=edit_applicability_filter,
             include_archived=include_archived,
         )
-        st.caption(f"{len(rows)} exigence(s) trouvée(s).")
+        st.caption(f"{len(rows)} exigence(s) trouvée(s). Cliquez sur une exigence pour la modifier.")
+
         if rows:
-            st.dataframe(rows, use_container_width=True)
-            labels = [f"Ligne {r['row']} - {r['number']} - {r['french_name']}" for r in rows]
-            choice = st.selectbox("Liste des exigences", labels)
-            selected = rows[labels.index(choice)]
-            st.session_state.selected_row = selected["row"]
-            info_col1, info_col2 = st.columns(2)
-            with info_col1:
-                st.info(f"Exigence sélectionnée : {selected['number']}")
-            with info_col2:
-                next_revision = compute_number_preview(selected.get("type", ""), selected.get("number", ""))
-                st.info(f"Prochaine révision si modifiée : {next_revision}")
-
-            if st.button("Charger l'exigence dans le formulaire"):
-                st.session_state.form_data = handler.load_requirement(sheet_name, selected["row"])
-                st.session_state.selected_row = selected["row"]
-                st.session_state.preview_data = None
-                st.success("Données chargées dans le formulaire principal.")
-
-            if st.button("Enregistrer les modifications du formulaire"):
-                payload = sanitize_payload(st.session_state.form_data)
-                updated_number = handler.update_requirement(sheet_name, selected["row"], payload)
-                st.session_state.form_data["number"] = updated_number
-                append_history(LOG_FILE, "UPDATE", selected["row"], updated_number, sheet_name)
-                st.success(f"Exigence mise à jour. Nouveau NUMBER : {updated_number}")
+            for row in rows:
+                row_label = f"{row['number']} — {row['french_name']}"
+                if st.button(row_label, key=f"edit_row_{row['row']}", use_container_width=True):
+                    st.session_state.form_data = handler.load_requirement(sheet_name, row["row"])
+                    st.session_state.selected_row = row["row"]
+                    st.session_state.preview_data = None
+                    st.success(f"Exigence chargée : {row['number']}")
         else:
             st.info("Aucune exigence ne correspond aux filtres courants.")
+
+        if st.session_state.selected_row:
+            st.markdown("---")
+            st.subheader(f"Modification de l'exigence ligne {st.session_state.selected_row}")
+            current_number = st.session_state.form_data.get("number", "")
+            next_revision = compute_number_preview(st.session_state.form_data.get("type", ""), current_number)
+            st.info(f"Révision suivante : {next_revision}")
+
+            preview_btn, save_btn, clear_btn, collected = render_requirement_form(
+                form_key="edit_requirement_form",
+                submit_label="Enregistrer les modifications",
+                preview_label="Prévisualiser la modification",
+            )
+
+            if clear_btn:
+                st.session_state.form_data = {key: "" for key in FIELD_KEYS}
+                st.session_state.preview_data = None
+                st.session_state.selected_row = None
+                st.success("Formulaire de modification vidé.")
+
+            if preview_btn or save_btn:
+                cleaned, errors = process_form_submission(collected)
+                if errors:
+                    st.error("\n".join(errors))
+                else:
+                    st.session_state.preview_data = cleaned
+
+            render_preview()
+
+            if save_btn and st.session_state.preview_data:
+                updated_number = handler.update_requirement(
+                    sheet_name,
+                    st.session_state.selected_row,
+                    st.session_state.preview_data,
+                )
+                st.session_state.form_data["number"] = updated_number
+                st.session_state.preview_data = None
+                append_history(LOG_FILE, "UPDATE", st.session_state.selected_row, updated_number, sheet_name)
+                st.success(f"Exigence mise à jour. Nouveau NUMBER : {updated_number}")
     except ExcelHandlerError as exc:
         st.error(str(exc))
 
-if mode == "Archivage":
-    st.markdown("---")
+if st.session_state.current_page == "archivage":
     st.subheader("Mode archivage sécurisé")
     keyword = st.text_input("Rechercher la ligne à archiver")
     if keyword:

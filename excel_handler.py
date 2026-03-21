@@ -77,12 +77,12 @@ class ExcelHandler:
     @classmethod
     def _increment_number_revision(cls, current_number: str, type_value: str) -> str:
         match = NUMBER_REGEX.match(str(current_number or "").strip())
-        normalized_type = cls._normalize_type(type_value)
         if match:
+            original_type = match.group("type")
             sequence = int(match.group("sequence"))
             revision = int(match.group("revision")) + 1
-            return cls._build_number(normalized_type, sequence, revision)
-        return cls._build_number(normalized_type, 1, 1)
+            return cls._build_number(original_type, sequence, revision)
+        return cls._build_number(type_value, 1, 1)
 
     def preview_next_number(self, sheet_name: str, type_value: str) -> str:
         wb = self._load_workbook()

@@ -18,7 +18,14 @@ from config import (
     TYPE_FREE_OPTION,
 )
 from excel_handler import ExcelHandler, ExcelHandlerError
-from utils import append_history, sanitize_payload, validate_required
+from utils import (
+    append_history,
+    describe_payload_changes,
+    read_history,
+    requirement_number_base,
+    sanitize_payload,
+    validate_required,
+)
 
 PAGE_SIZE = 5
 
@@ -156,10 +163,6 @@ if "search_page" not in st.session_state:
 if "theme_mode" not in st.session_state:
     st.session_state.theme_mode = "Light"
 
-st.sidebar.markdown(
-    '<div class="theme-card"><strong>Thème</strong><div class="theme-muted">Nuances bleues douces pour le confort visuel.</div></div>',
-    unsafe_allow_html=True,
-)
 st.session_state.theme_mode = st.sidebar.radio(
     "Mode d'affichage",
     ["Light", "Dark"],
@@ -172,6 +175,8 @@ if st.sidebar.button("Exigences", use_container_width=True):
     st.session_state.current_page = "exigences"
 if st.sidebar.button("Archivage", use_container_width=True):
     st.session_state.current_page = "archivage"
+if st.sidebar.button("Historique", use_container_width=True):
+    st.session_state.current_page = "historique"
 
 try:
     options = handler.get_dynamic_options(sheet_name)
@@ -185,6 +190,8 @@ if "preview_data" not in st.session_state:
     st.session_state.preview_data = None
 if "selected_row" not in st.session_state:
     st.session_state.selected_row = None
+if "original_form_data" not in st.session_state:
+    st.session_state.original_form_data = {key: "" for key in FIELD_KEYS}
 
 
 TEXTAREA_KEYS = {"french_resume", "english_resume", "remarks_n", "remarks_p", "remarks_r"}
@@ -197,6 +204,7 @@ def is_editing() -> bool:
 
 def reset_form() -> None:
     st.session_state.form_data = {key: "" for key in FIELD_KEYS}
+    st.session_state.original_form_data = {key: "" for key in FIELD_KEYS}
     st.session_state.preview_data = None
     st.session_state.selected_row = None
 
@@ -370,7 +378,7 @@ if st.session_state.current_page == "saisie":
     if add_btn and st.session_state.preview_data:
         try:
             row = handler.add_requirement(sheet_name, st.session_state.preview_data)
-            append_history(LOG_FILE, "ADD", row, st.session_state.preview_data.get("number", ""), sheet_name)
+            append_history(LOG_FILE, "ADD", row, st.session_state.preview_data.get("number", ""), sheet_name, changes="Création de l'exigence")
             st.success(f"Ligne ajoutée en tête avec succès : {sheet_name}!{row}")
             reset_form()
             st.session_state.current_page = "exigences"
@@ -434,6 +442,7 @@ if st.session_state.current_page == "exigences":
                 row_label = f"{row['number']} — {row['french_name']}"
                 if st.button(row_label, key=f"edit_row_{row['row']}", use_container_width=True):
                     st.session_state.form_data = handler.load_requirement(sheet_name, row["row"])
+                    st.session_state.original_form_data = dict(st.session_state.form_data)
                     st.session_state.selected_row = row["row"]
                     st.session_state.preview_data = None
                     st.session_state.current_page = "edit_requirement"
@@ -455,6 +464,19 @@ if st.session_state.current_page == "edit_requirement" and st.session_state.sele
     current_number = st.session_state.form_data.get("number", "")
     next_revision = compute_number_preview(st.session_state.form_data.get("type", ""), current_number)
     st.info(f"Révision suivante : {next_revision}")
+
+    requirement_history = read_history(LOG_FILE, limit=5, number_base_filter=requirement_number_base(current_number))
+    st.markdown("### Dernières modifications")
+    if requirement_history:
+        latest_history = requirement_history[0]
+        st.info(
+            f"Dernière modification : {latest_history['timestamp']} par {latest_history['user']}\n\n"
+            f"{latest_history['changes'] or latest_history['action']}"
+        )
+        with st.expander("Voir l'historique récent de cette exigence"):
+            st.dataframe(requirement_history, use_container_width=True)
+    else:
+        st.caption("Aucun historique enregistré pour cette exigence pour le moment.")
 
     preview_btn, save_btn, clear_btn, collected = render_requirement_form(
         form_key="edit_requirement_form",
@@ -482,9 +504,14 @@ if st.session_state.current_page == "edit_requirement" and st.session_state.sele
             st.session_state.selected_row,
             st.session_state.preview_data,
         )
+        updated_payload = dict(st.session_state.preview_data)
         st.session_state.form_data["number"] = updated_number
+        changes = describe_payload_changes(st.session_state.original_form_data, updated_payload)
+        changes = f"Version: {current_number} → {updated_number} | {changes}"
+        append_history(LOG_FILE, "UPDATE", st.session_state.selected_row, updated_number, sheet_name, changes=changes)
+        st.session_state.original_form_data = dict(updated_payload)
+        st.session_state.original_form_data["number"] = updated_number
         st.session_state.preview_data = None
-        append_history(LOG_FILE, "UPDATE", st.session_state.selected_row, updated_number, sheet_name)
         st.success(f"Exigence mise à jour. Nouveau NUMBER : {updated_number}")
 
 if st.session_state.current_page == "archivage":
@@ -500,9 +527,18 @@ if st.session_state.current_page == "archivage":
                 confirm = st.checkbox("Je confirme l'archivage")
                 if st.button("Archiver") and confirm:
                     handler.archive_requirement(sheet_name, row)
-                    append_history(LOG_FILE, "ARCHIVE", row, rows[labels.index(choice)]["number"], sheet_name)
+                    append_history(LOG_FILE, "ARCHIVE", row, rows[labels.index(choice)]["number"], sheet_name, changes="Archivage de l'exigence")
                     st.success("Exigence archivée.")
             else:
                 st.info("Aucun résultat.")
         except ExcelHandlerError as exc:
             st.error(str(exc))
+
+
+if st.session_state.current_page == "historique":
+    st.subheader("Historique")
+    history_entries = read_history(LOG_FILE, limit=30)
+    if history_entries:
+        st.dataframe(history_entries, use_container_width=True)
+    else:
+        st.info("Aucun historique disponible pour le moment.")

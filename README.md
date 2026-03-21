@@ -20,7 +20,8 @@ Application locale Streamlit pour saisir/mettre à jour des exigences dans un fi
 - Listes déroulantes dynamiques (valeurs existantes de l'onglet + valeurs par défaut).
 - Mode édition accessible depuis le bandeau latéral gauche, avec recherche filtrée paginée (5 résultats par page), liste cliquable et page de modification dédiée.
 - Mode archivage sécurisé (marquage `[ARCHIVED]` sur le nom FR).
-- Historique CSV (`history_log.csv`) : date, utilisateur, action, onglet, ligne.
+- Historique CSV (`history_log.csv`) : date, utilisateur, action, onglet, ligne et détail des changements.
+- Rubrique **Historique** dans le bandeau latéral pour consulter les dernières modifications et changements de version.
 
 ## Structure
 
@@ -66,6 +67,7 @@ streamlit run app.py
 8. Depuis le bouton latéral **Exigences**, ouvrir la page de recherche, naviguer dans les pages de 5 résultats, puis cliquer directement sur l'exigence à modifier pour ouvrir sa page dédiée.
 9. Utiliser le grand bouton bleu **Ajouter une exigence** dans la rubrique **Exigences** pour créer une nouvelle exigence.
 10. Choisir au besoin le thème **Light** ou **Dark** en barre latérale.
+11. Consulter la rubrique **Historique** pour voir les dernières modifications et les changements de version.
 
 ## Comportement Excel
 
@@ -78,6 +80,7 @@ streamlit run app.py
 - Les jalons `SOR` à `FAI` sont alimentés par cases à cocher et écrivent `X` si cochés, sinon une cellule vide.
 - Le `NUMBER` suit la forme `REQ_<TYPE>_<index sur 3 chiffres>_00` à la création.
 - Lors d'une modification, le `NUMBER` garde exactement la même base (`REQ_<TYPE>_<index>`) et seuls les deux derniers chiffres sont incrémentés (`00` → `01` → `02`, etc.).
+- En sélectionnant une exigence à modifier, l'interface affiche son dernier historique de modification avec la date et le détail des champs changés.
 
 ## Limites connues
 

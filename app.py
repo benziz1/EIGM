@@ -114,6 +114,21 @@ def inject_theme(theme_name: str) -> None:
             color: {colors['muted']};
             font-size: 0.95rem;
         }}
+        [data-baseweb="select"] > div,
+        [data-baseweb="select"] span,
+        [data-baseweb="select"] input,
+        [data-testid="stSelectbox"] div,
+        [data-testid="stSelectbox"] span,
+        [data-testid="stSelectbox"] svg,
+        [data-testid="stSelectbox"] p,
+        [data-testid="stSelectbox"] label {{
+            color: {colors['text']} !important;
+            fill: {colors['text']} !important;
+        }}
+        [data-baseweb="select"] > div {{
+            background: {colors['surface']} !important;
+            border-color: {colors['border']} !important;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -367,6 +382,7 @@ if st.session_state.current_page == "exigences":
     st.markdown('<div class="theme-muted">Recherche, filtrage et accès rapide à la création d\'une nouvelle exigence.</div>', unsafe_allow_html=True)
     if st.button("Ajouter une exigence", type="primary", use_container_width=True):
         go_to_add_page()
+    st.markdown("### Recherche et modification d'exigence")
 
     filter_col1, filter_col2, filter_col3 = st.columns(3)
     with filter_col1:

@@ -1,12 +1,9 @@
 from __future__ import annotations
-
 from html import escape
 from math import ceil
 from pathlib import Path
 from typing import Dict
-
 import streamlit as st
-
 from config import (
     COLUMNS_BY_KEY,
     DEFAULT_SHEET,
@@ -20,9 +17,7 @@ from config import (
 )
 from excel_handler import ExcelHandler, ExcelHandlerError
 import utils
-
 PAGE_SIZE = 5
-
 def requirement_number_base(identifier: str) -> str:
     if hasattr(utils, "requirement_number_base"):
         return utils.requirement_number_base(identifier)
@@ -33,8 +28,6 @@ def requirement_number_base(identifier: str) -> str:
     if len(parts) >= 4:
         return "_".join(parts[:-1])
     return value
-
-
 def describe_payload_changes(previous_payload: Dict[str, str], current_payload: Dict[str, str]) -> str:
     if hasattr(utils, "describe_payload_changes"):
         return utils.describe_payload_changes(previous_payload, current_payload)
@@ -48,13 +41,10 @@ def describe_payload_changes(previous_payload: Dict[str, str], current_payload: 
             label = COLUMNS_BY_KEY[key].label
             changes.append(f"{label}: '{before or '∅'}' → '{after or '∅'}'")
     return " | ".join(changes) if changes else "Aucune différence métier détectée"
-
-
 def read_history(log_file: Path, limit: int = 20, number_base_filter: str = "") -> list[Dict[str, str]]:
     if hasattr(utils, "read_history"):
         return utils.read_history(log_file, limit=limit, number_base_filter=number_base_filter)
     import csv
-
     if not log_file.exists():
         return []
     entries: list[Dict[str, str]] = []
@@ -66,22 +56,15 @@ def read_history(log_file: Path, limit: int = 20, number_base_filter: str = "") 
             entries.append(dict(row))
     entries.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
     return entries[:limit]
-
-
 def sanitize_payload(payload: Dict[str, str]) -> Dict[str, str]:
     return utils.sanitize_payload(payload)
-
-
 def validate_required(payload: Dict[str, str], required_keys: list[str]) -> list[str]:
     return utils.validate_required(payload, required_keys)
-
-
 def append_history(log_file: Path, action: str, row_number: int, identifier: str, sheet_name: str, changes: str = "") -> None:
     try:
         utils.append_history(log_file, action, row_number, identifier, sheet_name, changes=changes)
     except TypeError:
         utils.append_history(log_file, action, row_number, identifier, sheet_name)
-
 THEMES = {
     "Light": {
         "bg": "#eef4fb",
@@ -106,8 +89,6 @@ THEMES = {
         "primary_text": "#f7fbff",
     },
 }
-
-
 def inject_theme(theme_name: str) -> None:
     colors = THEMES[theme_name]
     st.markdown(
@@ -252,25 +233,49 @@ def inject_theme(theme_name: str) -> None:
             visibility: visible;
             opacity: 1;
         }}
+        .brand-banner {{
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: {colors['surface']};
+            border: 1px solid {colors['border']};
+            border-radius: 18px;
+            padding: 0.9rem 1.2rem;
+            margin-bottom: 1rem;
+        }}
+        .brand-name {{
+            font-size: 3rem;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: 0.32rem;
+            color: #25277a;
+        }}
+        .brand-dot {{
+            color: #3ab6e6;
+        }}
+        .brand-tagline {{
+            margin-top: 0.3rem;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #25277a;
+        }}
+        .brand-tagline-accent {{
+            color: #3ab6e6;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
     )
-
 st.set_page_config(page_title="Requirement Entry", layout="wide")
-
 workbook_path = Path(st.sidebar.text_input("Fichier Excel", str(DEFAULT_WORKBOOK)))
 handler = ExcelHandler(workbook_path)
-
 try:
     sheets = handler.list_sheets()
 except ExcelHandlerError as exc:
     st.error(str(exc))
     st.stop()
-
 sheet_index = sheets.index(DEFAULT_SHEET) if DEFAULT_SHEET in sheets else 0
 sheet_name = st.sidebar.selectbox("Onglet cible", sheets, index=sheet_index)
-
 if "current_page" not in st.session_state:
     st.session_state.current_page = "exigences"
 if "search_page" not in st.session_state:
@@ -279,8 +284,8 @@ if "theme_mode" not in st.session_state:
     st.session_state.theme_mode = "Dark"
 if "theme_toggle" not in st.session_state:
     st.session_state.theme_toggle = st.session_state.theme_mode == "Dark"
-
 inject_theme("Dark" if st.session_state.theme_toggle else "Light")
+render_logo_banner()
 title_col, theme_col = st.columns([8, 1.4])
 with title_col:
     st.title("Masque de saisie des exigences (Excel)")
@@ -291,20 +296,17 @@ if theme_is_dark != st.session_state.theme_toggle:
     st.session_state.theme_mode = "Dark" if theme_is_dark else "Light"
     st.rerun()
 st.session_state.theme_mode = "Dark" if st.session_state.theme_toggle else "Light"
-
 if st.sidebar.button("Exigences", use_container_width=True):
     st.session_state.current_page = "exigences"
 if st.sidebar.button("Archivage", use_container_width=True):
     st.session_state.current_page = "archivage"
 if st.sidebar.button("Historique", use_container_width=True):
     st.session_state.current_page = "historique"
-
 try:
     options = handler.get_dynamic_options(sheet_name)
 except ExcelHandlerError as exc:
     st.error(str(exc))
     st.stop()
-
 if "form_data" not in st.session_state:
     st.session_state.form_data = {key: "" for key in FIELD_KEYS}
 if "preview_data" not in st.session_state:
@@ -313,33 +315,21 @@ if "selected_row" not in st.session_state:
     st.session_state.selected_row = None
 if "original_form_data" not in st.session_state:
     st.session_state.original_form_data = {key: "" for key in FIELD_KEYS}
-
-
 TEXTAREA_KEYS = {"french_resume", "english_resume", "remarks_n", "remarks_p", "remarks_r"}
 required = [key for key in FIELD_KEYS if COLUMNS_BY_KEY[key].required and key != "number"]
-
-
 def is_editing() -> bool:
     return st.session_state.current_page == "edit_requirement" and st.session_state.selected_row is not None
-
-
 def reset_form() -> None:
     st.session_state.form_data = {key: "" for key in FIELD_KEYS}
     st.session_state.original_form_data = {key: "" for key in FIELD_KEYS}
     st.session_state.preview_data = None
     st.session_state.selected_row = None
-
-
 def go_to_add_page() -> None:
     reset_form()
     st.session_state.current_page = "saisie"
-
-
 def go_to_search_page() -> None:
     st.session_state.preview_data = None
     st.session_state.current_page = "exigences"
-
-
 def compute_number_preview(type_value: str, fallback_number: str = "") -> str:
     if is_editing():
         current_number = fallback_number or st.session_state.form_data.get("number", "")
@@ -355,8 +345,6 @@ def compute_number_preview(type_value: str, fallback_number: str = "") -> str:
         return handler.preview_next_number(sheet_name, type_value)
     except ExcelHandlerError:
         return fallback_number
-
-
 def draw_type_selector(default: str) -> str:
     available_types = []
     for value in options.get("type", []):
@@ -367,14 +355,12 @@ def draw_type_selector(default: str) -> str:
         selectable_types.insert(0, "GEN")
     if "AUT" not in selectable_types:
         selectable_types.insert(1 if selectable_types else 0, "AUT")
-
     if default and default not in selectable_types:
         choice_index = len(selectable_types)
         free_default = default
     else:
         choice_index = selectable_types.index(default) if default in selectable_types else 0
         free_default = ""
-
     selected = st.selectbox(
         "TYPE d'identification",
         options=selectable_types + [TYPE_FREE_OPTION],
@@ -383,26 +369,20 @@ def draw_type_selector(default: str) -> str:
     if selected == TYPE_FREE_OPTION:
         return st.text_input("TYPE libre", value=free_default)
     return selected
-
-
 def draw_input(key: str) -> str:
     label = COLUMNS_BY_KEY[key].label
     default = st.session_state.form_data.get(key, "")
-
     if key == "number":
         preview_number = compute_number_preview(st.session_state.form_data.get("type", ""), default)
         help_text = "En création : suffixe 00. En modification : seul le dernier nombre est incrémenté automatiquement."
         st.text_input("NUMBER (généré automatiquement)", value=preview_number, disabled=True, help=help_text)
         return preview_number
-
     if key == "type":
         return draw_type_selector(default)
-
     if key in MILESTONE_KEYS:
         checked = str(default).strip().upper() in {MILESTONE_MARK, "X", "✗", "TRUE", "1", "YES", "OUI"}
         is_selected = st.checkbox(label, value=checked)
         return MILESTONE_MARK if is_selected else ""
-
     choices = options.get(key)
     if choices:
         available_choices = list(dict.fromkeys(choices))
@@ -418,18 +398,13 @@ def draw_input(key: str) -> str:
         if pick == TYPE_FREE_OPTION:
             return st.text_input(f"{label} libre ({key})", value=default)
         return pick
-
     if key in TEXTAREA_KEYS:
         return st.text_area(f"{label} ({key})", value=default, height=90)
     return st.text_input(f"{label} ({key})", value=default)
-
-
 st.caption(
     "Les nouvelles exigences sont toujours insérées en tête de la zone de données (ligne 7),"
     " sans utiliser les lignes vides existantes plus bas dans l'onglet."
 )
-
-
 def render_requirement_form(form_key: str, submit_label: str, preview_label: str) -> tuple[bool, bool, bool, Dict[str, str]]:
     with st.form(form_key):
         collected: Dict[str, str] = {}
@@ -441,18 +416,14 @@ def render_requirement_form(form_key: str, submit_label: str, preview_label: str
                     with milestone_cols[idx]:
                         collected[key] = draw_input(key)
                 continue
-
             cols = st.columns(2)
             for idx, key in enumerate(keys):
                 with cols[idx % 2]:
                     collected[key] = draw_input(key)
-
         preview_btn = st.form_submit_button(preview_label)
         submit_btn = st.form_submit_button(submit_label)
         clear_btn = st.form_submit_button("Vider le formulaire")
     return preview_btn, submit_btn, clear_btn, collected
-
-
 def process_form_submission(collected: Dict[str, str]) -> tuple[Dict[str, str], list[str]]:
     cleaned = sanitize_payload(collected)
     cleaned["number"] = compute_number_preview(cleaned.get("type", ""), cleaned.get("number", ""))
@@ -461,26 +432,32 @@ def process_form_submission(collected: Dict[str, str]) -> tuple[Dict[str, str], 
     if not cleaned.get("number"):
         errors.append("Le NUMBER n'a pas pu être généré automatiquement. Vérifiez le TYPE.")
     return cleaned, errors
-
-
 def render_preview() -> None:
     if st.session_state.preview_data:
         st.markdown("### Prévisualisation")
         st.dataframe([st.session_state.preview_data], use_container_width=True)
-
-
+def render_logo_banner() -> None:
+    st.markdown(
+        """
+        <div class="brand-banner">
+            <div class="brand-name">THALES<span class="brand-dot">•</span></div>
+            <div class="brand-tagline"><span class="brand-tagline-accent">Construisons ensemble</span> un avenir de confiance</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 def render_history_entries(entries: list[Dict[str, str]]) -> None:
     if not entries:
         st.info("Aucun historique disponible pour le moment.")
         return
-
     cards = []
     for entry in entries:
         details = entry.get("changes", "") or entry.get("action", "")
         tooltip_body = escape(details, quote=True).replace(" | ", "<br>")
+        tooltip_title = escape(details.replace(" | ", "\n"), quote=True)
         cards.append(
             f"""
-            <div class="history-entry">
+            <div class="history-entry" title="{tooltip_title}">
                 <div class="history-title">{escape(entry.get('action', ''))} — {escape(entry.get('number', ''))}</div>
                 <div class="history-sub">{escape(entry.get('timestamp', ''))} · {escape(entry.get('user', ''))} · {escape(entry.get('sheet', ''))}</div>
                 <div class="history-tooltip">{tooltip_body}</div>
@@ -489,8 +466,6 @@ def render_history_entries(entries: list[Dict[str, str]]) -> None:
         )
     st.markdown("".join(cards), unsafe_allow_html=True)
     st.caption("Survolez une entrée d'historique pour afficher le détail des changements quand il s'agit d'une mise à jour.")
-
-
 if st.session_state.current_page == "saisie":
     header_col, plus_col = st.columns([12, 1])
     with header_col:
@@ -498,26 +473,21 @@ if st.session_state.current_page == "saisie":
     with plus_col:
         if st.button("←", help="Retour à la recherche des exigences"):
             go_to_search_page()
-
     preview_btn, add_btn, clear_btn, collected = render_requirement_form(
         form_key="add_requirement_form",
         submit_label="Ajouter la ligne",
         preview_label="Prévisualiser la ligne avant insertion",
     )
-
     if clear_btn:
         reset_form()
         st.success("Formulaire vidé.")
-
     if preview_btn or add_btn:
         cleaned, errors = process_form_submission(collected)
         if errors:
             st.error("\n".join(errors))
         else:
             st.session_state.preview_data = cleaned
-
     render_preview()
-
     if add_btn and st.session_state.preview_data:
         try:
             row = handler.add_requirement(sheet_name, st.session_state.preview_data)
@@ -527,14 +497,12 @@ if st.session_state.current_page == "saisie":
             st.session_state.current_page = "exigences"
         except ExcelHandlerError as exc:
             st.error(str(exc))
-
 if st.session_state.current_page == "exigences":
     st.subheader("Exigences")
     st.markdown('<div class="theme-muted">Recherche, filtrage et accès rapide à la création d\'une nouvelle exigence.</div>', unsafe_allow_html=True)
     if st.button("Ajouter une exigence", type="primary", use_container_width=True):
         go_to_add_page()
     st.markdown("### Recherche et modification d'exigence")
-
     filter_col1, filter_col2, filter_col3 = st.columns(3)
     with filter_col1:
         edit_keyword = st.text_input("Recherche globale", placeholder="NUMBER, nom FR, nom EN...")
@@ -548,9 +516,7 @@ if st.session_state.current_page == "exigences":
             applicability_filter_values,
             format_func=lambda x: x or "Tous",
         )
-
     include_archived = st.checkbox("Inclure les exigences archivées", value=False)
-
     try:
         rows = handler.list_requirements(
             sheet_name=sheet_name,
@@ -562,11 +528,9 @@ if st.session_state.current_page == "exigences":
         total_pages = max(1, ceil(len(rows) / PAGE_SIZE))
         if st.session_state.search_page > total_pages:
             st.session_state.search_page = total_pages
-
         start = (st.session_state.search_page - 1) * PAGE_SIZE
         visible_rows = rows[start : start + PAGE_SIZE]
         st.caption(f"{len(rows)} exigence(s) trouvée(s). Affichage de {len(visible_rows)} résultat(s) sur cette page.")
-
         if visible_rows:
             for row in visible_rows:
                 row_label = f"{row['number']} — {row['french_name']}"
@@ -577,7 +541,6 @@ if st.session_state.current_page == "exigences":
                     st.session_state.preview_data = None
                     st.session_state.current_page = "edit_requirement"
                     st.rerun()
-
         page_col1, page_col2, page_col3 = st.columns([1, 2, 1])
         with page_col1:
             if st.button("← Page précédente", disabled=st.session_state.search_page <= 1, use_container_width=True):
@@ -596,7 +559,6 @@ if st.session_state.current_page == "exigences":
             st.info("Aucune exigence ne correspond aux filtres courants.")
     except ExcelHandlerError as exc:
         st.error(str(exc))
-
 if st.session_state.current_page == "edit_requirement" and st.session_state.selected_row:
     header_col, back_col = st.columns([12, 1])
     with header_col:
@@ -605,11 +567,9 @@ if st.session_state.current_page == "edit_requirement" and st.session_state.sele
         if st.button("←", help="Retour à la recherche"):
             go_to_search_page()
             st.rerun()
-
     current_number = st.session_state.form_data.get("number", "")
     next_revision = compute_number_preview(st.session_state.form_data.get("type", ""), current_number)
     st.info(f"Révision suivante : {next_revision}")
-
     requirement_history = read_history(LOG_FILE, limit=5, number_base_filter=requirement_number_base(current_number))
     st.markdown("### Dernières modifications")
     if requirement_history:
@@ -622,27 +582,22 @@ if st.session_state.current_page == "edit_requirement" and st.session_state.sele
             render_history_entries(requirement_history)
     else:
         st.caption("Aucun historique enregistré pour cette exigence pour le moment.")
-
     preview_btn, save_btn, clear_btn, collected = render_requirement_form(
         form_key="edit_requirement_form",
         submit_label="Enregistrer les modifications",
         preview_label="Prévisualiser la modification",
     )
-
     if clear_btn:
         reset_form()
         st.success("Formulaire de modification vidé.")
         go_to_search_page()
-
     if preview_btn or save_btn:
         cleaned, errors = process_form_submission(collected)
         if errors:
             st.error("\n".join(errors))
         else:
             st.session_state.preview_data = cleaned
-
     render_preview()
-
     if save_btn and st.session_state.preview_data:
         updated_number = handler.update_requirement(
             sheet_name,
@@ -658,7 +613,6 @@ if st.session_state.current_page == "edit_requirement" and st.session_state.sele
         st.session_state.original_form_data["number"] = updated_number
         st.session_state.preview_data = None
         st.success(f"Exigence mise à jour. Nouveau NUMBER : {updated_number}")
-
 if st.session_state.current_page == "archivage":
     st.subheader("Mode archivage sécurisé")
     keyword = st.text_input("Rechercher la ligne à archiver")
@@ -678,8 +632,6 @@ if st.session_state.current_page == "archivage":
                 st.info("Aucun résultat.")
         except ExcelHandlerError as exc:
             st.error(str(exc))
-
-
 if st.session_state.current_page == "historique":
     st.subheader("Historique")
     history_entries = read_history(LOG_FILE, limit=30)

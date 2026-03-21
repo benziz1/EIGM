@@ -66,7 +66,7 @@ streamlit run app.py
 7. En cas de succès, la ligne est écrite en tête de la zone de données et journalisée.
 8. Depuis le bouton latéral **Exigences**, ouvrir la page de recherche, naviguer dans les pages de 5 résultats, puis cliquer directement sur l'exigence à modifier pour ouvrir sa page dédiée.
 9. Utiliser le grand bouton bleu **Ajouter une exigence** dans la rubrique **Exigences** pour créer une nouvelle exigence.
-10. Choisir au besoin le thème **Light** ou **Dark** en barre latérale.
+10. Le thème par défaut est **Dark** et peut être changé via l'interrupteur en haut à gauche.
 11. Consulter la rubrique **Historique** pour voir les dernières modifications et les changements de version.
 
 ## Comportement Excel

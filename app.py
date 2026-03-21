@@ -194,7 +194,6 @@ def inject_theme(theme_name: str) -> None:
     )
 
 st.set_page_config(page_title="Requirement Entry", layout="wide")
-st.title("Masque de saisie des exigences (Excel)")
 
 workbook_path = Path(st.sidebar.text_input("Fichier Excel", str(DEFAULT_WORKBOOK)))
 handler = ExcelHandler(workbook_path)
@@ -213,15 +212,15 @@ if "current_page" not in st.session_state:
 if "search_page" not in st.session_state:
     st.session_state.search_page = 1
 if "theme_mode" not in st.session_state:
-    st.session_state.theme_mode = "Light"
+    st.session_state.theme_mode = "Dark"
 
-st.session_state.theme_mode = st.sidebar.radio(
-    "Mode d'affichage",
-    ["Light", "Dark"],
-    index=0 if st.session_state.theme_mode == "Light" else 1,
-    horizontal=True,
-)
+theme_col, title_col = st.columns([1.4, 8])
+with theme_col:
+    theme_is_dark = st.toggle("Dark", value=st.session_state.theme_mode == "Dark")
+st.session_state.theme_mode = "Dark" if theme_is_dark else "Light"
 inject_theme(st.session_state.theme_mode)
+with title_col:
+    st.title("Masque de saisie des exigences (Excel)")
 
 if st.sidebar.button("Exigences", use_container_width=True):
     st.session_state.current_page = "exigences"

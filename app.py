@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from html import escape
 from math import ceil
 from pathlib import Path
 from typing import Dict
@@ -184,9 +185,33 @@ def inject_theme(theme_name: str) -> None:
             color: {colors['text']} !important;
             fill: {colors['text']} !important;
         }}
-        [data-baseweb="select"] > div {{
+        [data-baseweb="select"] > div,
+        [data-baseweb="popover"],
+        [role="listbox"],
+        [role="option"] {{
             background: {colors['surface']} !important;
             border-color: {colors['border']} !important;
+        }}
+        [data-baseweb="popover"] *,
+        [role="listbox"] *,
+        [role="option"] * {{
+            color: {colors['text']} !important;
+            fill: {colors['text']} !important;
+        }}
+        .history-entry {{
+            background: {colors['surface']};
+            border: 1px solid {colors['border']};
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.65rem;
+        }}
+        .history-title {{
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }}
+        .history-sub {{
+            color: {colors['muted']};
+            font-size: 0.92rem;
         }}
         </style>
         """,
@@ -214,13 +239,13 @@ if "search_page" not in st.session_state:
 if "theme_mode" not in st.session_state:
     st.session_state.theme_mode = "Dark"
 
-theme_col, title_col = st.columns([1.4, 8])
+title_col, theme_col = st.columns([8, 1.4])
+with title_col:
+    st.title("Masque de saisie des exigences (Excel)")
 with theme_col:
     theme_is_dark = st.toggle("Dark", value=st.session_state.theme_mode == "Dark")
 st.session_state.theme_mode = "Dark" if theme_is_dark else "Light"
 inject_theme(st.session_state.theme_mode)
-with title_col:
-    st.title("Masque de saisie des exigences (Excel)")
 
 if st.sidebar.button("Exigences", use_container_width=True):
     st.session_state.current_page = "exigences"
@@ -399,6 +424,28 @@ def render_preview() -> None:
         st.dataframe([st.session_state.preview_data], use_container_width=True)
 
 
+def render_history_entries(entries: list[Dict[str, str]]) -> None:
+    if not entries:
+        st.info("Aucun historique disponible pour le moment.")
+        return
+
+    cards = []
+    for entry in entries:
+        details = entry.get("changes", "") or entry.get("action", "")
+        tooltip = "Survolez pour voir le détail de la mise à jour" if entry.get("action") == "UPDATE" else details
+        title_attr = escape(details if entry.get("action") == "UPDATE" else tooltip, quote=True)
+        cards.append(
+            f"""
+            <div class="history-entry" title="{title_attr}">
+                <div class="history-title">{escape(entry.get('action', ''))} — {escape(entry.get('number', ''))}</div>
+                <div class="history-sub">{escape(entry.get('timestamp', ''))} · {escape(entry.get('user', ''))} · {escape(entry.get('sheet', ''))}</div>
+            </div>
+            """
+        )
+    st.markdown("".join(cards), unsafe_allow_html=True)
+    st.caption("Survolez une entrée d'historique pour afficher le détail des changements quand il s'agit d'une mise à jour.")
+
+
 if st.session_state.current_page == "saisie":
     header_col, plus_col = st.columns([12, 1])
     with header_col:
@@ -525,7 +572,7 @@ if st.session_state.current_page == "edit_requirement" and st.session_state.sele
             f"{latest_history['changes'] or latest_history['action']}"
         )
         with st.expander("Voir l'historique récent de cette exigence"):
-            st.dataframe(requirement_history, use_container_width=True)
+            render_history_entries(requirement_history)
     else:
         st.caption("Aucun historique enregistré pour cette exigence pour le moment.")
 
@@ -589,7 +636,4 @@ if st.session_state.current_page == "archivage":
 if st.session_state.current_page == "historique":
     st.subheader("Historique")
     history_entries = read_history(LOG_FILE, limit=30)
-    if history_entries:
-        st.dataframe(history_entries, use_container_width=True)
-    else:
-        st.info("Aucun historique disponible pour le moment.")
+    render_history_entries(history_entries)

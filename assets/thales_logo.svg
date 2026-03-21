@@ -1,0 +1,29 @@
+<svg width="765" height="191" viewBox="0 0 765 191" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>THALES logo</title>
+  <rect width="765" height="191" fill="transparent"/>
+  <text
+    x="0"
+    y="112"
+    fill="#25277A"
+    font-family="Aptos Black, Arial Black, Segoe UI, sans-serif"
+    font-size="156"
+    font-weight="900"
+    letter-spacing="7">THALES</text>
+  <circle cx="413" cy="81" r="19" fill="#3AB6E6"/>
+  <text
+    x="0"
+    y="188"
+    fill="#3AB6E6"
+    font-family="Aptos, Segoe UI, sans-serif"
+    font-size="47"
+    font-weight="700"
+    letter-spacing="0.2">Construisons ensemble</text>
+  <text
+    x="496"
+    y="188"
+    fill="#25277A"
+    font-family="Aptos, Segoe UI, sans-serif"
+    font-size="47"
+    font-weight="700"
+    letter-spacing="0.2">un avenir de confiance</text>
+</svg>

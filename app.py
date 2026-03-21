@@ -1,4 +1,5 @@
 from __future__ import annotations
+import base64
 from html import escape
 from math import ceil
 from pathlib import Path
@@ -244,47 +245,29 @@ def inject_theme(theme_name: str) -> None:
             border-radius: 0;
             box-shadow: none;
         }}
-        .brand-name {{
-            display: inline-block;
-            font-size: clamp(2.5rem, 4vw, 3.7rem);
-            line-height: 0.95;
-            font-weight: 900;
-            letter-spacing: 0.42rem;
-            color: #25277a;
-            text-transform: uppercase;
-            font-family: "Aptos", "Segoe UI", sans-serif;
-        }}
-        .brand-underline {{
-            width: min(240px, 42vw);
-            height: 0.26rem;
-            margin: 0.55rem 0 0.65rem;
-            border-radius: 999px;
-            background: linear-gradient(90deg, #25277a 0%, #3ab6e6 100%);
-        }}
-        .brand-tagline {{
-            font-size: 1.02rem;
-            font-weight: 700;
-            letter-spacing: 0.02rem;
-            color: {colors['text']};
-        }}
-        .brand-tagline-accent {{
-            color: #25277a;
+        .brand-banner img {{
+            display: block;
+            width: min(760px, 100%);
+            height: auto;
         }}
         </style>
         """,
         unsafe_allow_html=True,
     )
 def render_logo_banner() -> None:
-    st.markdown(
-        """
-        <div class="brand-banner">
-            <div class="brand-name">THALES</div>
-            <div class="brand-underline"></div>
-            <div class="brand-tagline"><span class="brand-tagline-accent">Construisons ensemble</span> un avenir de confiance</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    logo_path = Path("assets/thales_logo.svg")
+    if logo_path.exists():
+        encoded_logo = base64.b64encode(logo_path.read_bytes()).decode("ascii")
+        st.markdown(
+            f"""
+            <div class="brand-banner">
+                <img src="data:image/svg+xml;base64,{encoded_logo}" alt="THALES logo" />
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+    st.markdown("## THALES", unsafe_allow_html=False)
 st.set_page_config(page_title="Requirement Entry", layout="wide")
 workbook_path = Path(st.sidebar.text_input("Fichier Excel", str(DEFAULT_WORKBOOK)))
 handler = ExcelHandler(workbook_path)

@@ -432,10 +432,6 @@ def process_form_submission(collected: Dict[str, str]) -> tuple[Dict[str, str], 
     if not cleaned.get("number"):
         errors.append("Le NUMBER n'a pas pu être généré automatiquement. Vérifiez le TYPE.")
     return cleaned, errors
-def render_preview() -> None:
-    if st.session_state.preview_data:
-        st.markdown("### Prévisualisation")
-        st.dataframe([st.session_state.preview_data], use_container_width=True)
 def render_logo_banner() -> None:
     st.markdown(
         """
@@ -446,6 +442,11 @@ def render_logo_banner() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+def render_preview() -> None:
+    if st.session_state.preview_data:
+        st.markdown("### Prévisualisation")
+        st.dataframe([st.session_state.preview_data], use_container_width=True)
 def render_history_entries(entries: list[Dict[str, str]]) -> None:
     if not entries:
         st.info("Aucun historique disponible pour le moment.")

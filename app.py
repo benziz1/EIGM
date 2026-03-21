@@ -18,16 +18,68 @@ from config import (
     TYPE_FREE_OPTION,
 )
 from excel_handler import ExcelHandler, ExcelHandlerError
-from utils import (
-    append_history,
-    describe_payload_changes,
-    read_history,
-    requirement_number_base,
-    sanitize_payload,
-    validate_required,
-)
+import utils
 
 PAGE_SIZE = 5
+
+def requirement_number_base(identifier: str) -> str:
+    if hasattr(utils, "requirement_number_base"):
+        return utils.requirement_number_base(identifier)
+    value = str(identifier or "").strip()
+    if not value:
+        return ""
+    parts = value.split("_")
+    if len(parts) >= 4:
+        return "_".join(parts[:-1])
+    return value
+
+
+def describe_payload_changes(previous_payload: Dict[str, str], current_payload: Dict[str, str]) -> str:
+    if hasattr(utils, "describe_payload_changes"):
+        return utils.describe_payload_changes(previous_payload, current_payload)
+    changes = []
+    for key in FIELD_KEYS:
+        if key == "number":
+            continue
+        before = str(previous_payload.get(key, "") or "").strip()
+        after = str(current_payload.get(key, "") or "").strip()
+        if before != after:
+            label = COLUMNS_BY_KEY[key].label
+            changes.append(f"{label}: '{before or '∅'}' → '{after or '∅'}'")
+    return " | ".join(changes) if changes else "Aucune différence métier détectée"
+
+
+def read_history(log_file: Path, limit: int = 20, number_base_filter: str = "") -> list[Dict[str, str]]:
+    if hasattr(utils, "read_history"):
+        return utils.read_history(log_file, limit=limit, number_base_filter=number_base_filter)
+    import csv
+
+    if not log_file.exists():
+        return []
+    entries: list[Dict[str, str]] = []
+    with log_file.open("r", newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            if number_base_filter and row.get("number_base", "") != number_base_filter:
+                continue
+            entries.append(dict(row))
+    entries.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
+    return entries[:limit]
+
+
+def sanitize_payload(payload: Dict[str, str]) -> Dict[str, str]:
+    return utils.sanitize_payload(payload)
+
+
+def validate_required(payload: Dict[str, str], required_keys: list[str]) -> list[str]:
+    return utils.validate_required(payload, required_keys)
+
+
+def append_history(log_file: Path, action: str, row_number: int, identifier: str, sheet_name: str, changes: str = "") -> None:
+    try:
+        utils.append_history(log_file, action, row_number, identifier, sheet_name, changes=changes)
+    except TypeError:
+        utils.append_history(log_file, action, row_number, identifier, sheet_name)
 
 THEMES = {
     "Light": {

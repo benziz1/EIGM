@@ -237,30 +237,38 @@ def inject_theme(theme_name: str) -> None:
             position: sticky;
             top: 0;
             z-index: 40;
-            background: {colors['surface']};
-            border: 1px solid {colors['border']};
-            border-radius: 18px;
-            padding: 0.9rem 1.2rem;
-            margin-bottom: 1rem;
+            padding: 0.35rem 0 1rem;
+            margin-bottom: 0.85rem;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
         }}
         .brand-name {{
-            font-size: 3rem;
-            line-height: 1;
-            font-weight: 800;
-            letter-spacing: 0.32rem;
+            display: inline-block;
+            font-size: clamp(2.5rem, 4vw, 3.7rem);
+            line-height: 0.95;
+            font-weight: 900;
+            letter-spacing: 0.42rem;
             color: #25277a;
+            text-transform: uppercase;
+            font-family: "Aptos", "Segoe UI", sans-serif;
         }}
-        .brand-dot {{
-            color: #3ab6e6;
+        .brand-underline {{
+            width: min(240px, 42vw);
+            height: 0.26rem;
+            margin: 0.55rem 0 0.65rem;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #25277a 0%, #3ab6e6 100%);
         }}
         .brand-tagline {{
-            margin-top: 0.3rem;
-            font-size: 1.15rem;
-            font-weight: 600;
-            color: #25277a;
+            font-size: 1.02rem;
+            font-weight: 700;
+            letter-spacing: 0.02rem;
+            color: {colors['text']};
         }}
         .brand-tagline-accent {{
-            color: #3ab6e6;
+            color: #25277a;
         }}
         </style>
         """,
@@ -270,7 +278,8 @@ def render_logo_banner() -> None:
     st.markdown(
         """
         <div class="brand-banner">
-            <div class="brand-name">THALES<span class="brand-dot">•</span></div>
+            <div class="brand-name">THALES</div>
+            <div class="brand-underline"></div>
             <div class="brand-tagline"><span class="brand-tagline-accent">Construisons ensemble</span> un avenir de confiance</div>
         </div>
         """,

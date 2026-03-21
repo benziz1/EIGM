@@ -18,7 +18,7 @@ Application locale Streamlit pour saisir/mettre à jour des exigences dans un fi
 - Recopie des formules (dont `Q: DECISION`) via translation de références.
 - Validation des champs obligatoires.
 - Listes déroulantes dynamiques (valeurs existantes de l'onglet + valeurs par défaut).
-- Mode édition accessible depuis le bandeau latéral gauche, avec recherche filtrée, liste cliquable des exigences et formulaire de modification dédié.
+- Mode édition accessible depuis le bandeau latéral gauche, avec recherche filtrée paginée (5 résultats par page), liste cliquable et page de modification dédiée.
 - Mode archivage sécurisé (marquage `[ARCHIVED]` sur le nom FR).
 - Historique CSV (`history_log.csv`) : date, utilisateur, action, onglet, ligne.
 
@@ -63,7 +63,8 @@ streamlit run app.py
 5. Cliquer **Prévisualiser la ligne avant insertion**.
 6. Cliquer **Ajouter la ligne**.
 7. En cas de succès, la ligne est écrite en tête de la zone de données et journalisée.
-8. Depuis le bouton latéral **Exigences**, ouvrir la page de recherche, filtrer les résultats puis cliquer directement sur l'exigence à modifier.
+8. Depuis le bouton latéral **Exigences**, ouvrir la page de recherche, naviguer dans les pages de 5 résultats, puis cliquer directement sur l'exigence à modifier pour ouvrir sa page dédiée.
+9. Utiliser le bouton `+` dans la rubrique **Exigences** pour créer une nouvelle exigence.
 
 ## Comportement Excel
 

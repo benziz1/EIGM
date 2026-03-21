@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from math import ceil
 from pathlib import Path
 from typing import Dict
 
@@ -19,6 +20,8 @@ from config import (
 from excel_handler import ExcelHandler, ExcelHandlerError
 from utils import append_history, sanitize_payload, validate_required
 
+PAGE_SIZE = 5
+
 st.set_page_config(page_title="Requirement Entry", layout="wide")
 st.title("Masque de saisie des exigences (Excel)")
 
@@ -35,9 +38,10 @@ sheet_index = sheets.index(DEFAULT_SHEET) if DEFAULT_SHEET in sheets else 0
 sheet_name = st.sidebar.selectbox("Onglet cible", sheets, index=sheet_index)
 
 if "current_page" not in st.session_state:
-    st.session_state.current_page = "saisie"
-if st.sidebar.button("Nouvelle exigence", use_container_width=True):
-    st.session_state.current_page = "saisie"
+    st.session_state.current_page = "exigences"
+if "search_page" not in st.session_state:
+    st.session_state.search_page = 1
+
 if st.sidebar.button("Exigences", use_container_width=True):
     st.session_state.current_page = "exigences"
 if st.sidebar.button("Archivage", use_container_width=True):
@@ -62,7 +66,23 @@ required = [key for key in FIELD_KEYS if COLUMNS_BY_KEY[key].required and key !=
 
 
 def is_editing() -> bool:
-    return st.session_state.current_page == "exigences" and st.session_state.selected_row is not None
+    return st.session_state.current_page == "edit_requirement" and st.session_state.selected_row is not None
+
+
+def reset_form() -> None:
+    st.session_state.form_data = {key: "" for key in FIELD_KEYS}
+    st.session_state.preview_data = None
+    st.session_state.selected_row = None
+
+
+def go_to_add_page() -> None:
+    reset_form()
+    st.session_state.current_page = "saisie"
+
+
+def go_to_search_page() -> None:
+    st.session_state.preview_data = None
+    st.session_state.current_page = "exigences"
 
 
 def compute_number_preview(type_value: str, fallback_number: str = "") -> str:
@@ -195,7 +215,13 @@ def render_preview() -> None:
 
 
 if st.session_state.current_page == "saisie":
-    st.subheader("Saisie d'une nouvelle exigence")
+    header_col, plus_col = st.columns([12, 1])
+    with header_col:
+        st.subheader("Saisie d'une nouvelle exigence")
+    with plus_col:
+        if st.button("←", help="Retour à la recherche des exigences"):
+            go_to_search_page()
+
     preview_btn, add_btn, clear_btn, collected = render_requirement_form(
         form_key="add_requirement_form",
         submit_label="Ajouter la ligne",
@@ -203,9 +229,7 @@ if st.session_state.current_page == "saisie":
     )
 
     if clear_btn:
-        st.session_state.form_data = {key: "" for key in FIELD_KEYS}
-        st.session_state.preview_data = None
-        st.session_state.selected_row = None
+        reset_form()
         st.success("Formulaire vidé.")
 
     if preview_btn or add_btn:
@@ -222,13 +246,19 @@ if st.session_state.current_page == "saisie":
             row = handler.add_requirement(sheet_name, st.session_state.preview_data)
             append_history(LOG_FILE, "ADD", row, st.session_state.preview_data.get("number", ""), sheet_name)
             st.success(f"Ligne ajoutée en tête avec succès : {sheet_name}!{row}")
-            st.session_state.form_data = {key: "" for key in FIELD_KEYS}
-            st.session_state.preview_data = None
+            reset_form()
+            st.session_state.current_page = "exigences"
         except ExcelHandlerError as exc:
             st.error(str(exc))
 
 if st.session_state.current_page == "exigences":
-    st.subheader("Recherche et modification d'exigences")
+    header_col, plus_col = st.columns([12, 1])
+    with header_col:
+        st.subheader("Exigences")
+    with plus_col:
+        if st.button("+", help="Ajouter une nouvelle exigence"):
+            go_to_add_page()
+
     filter_col1, filter_col2, filter_col3 = st.columns(3)
     with filter_col1:
         edit_keyword = st.text_input("Recherche globale", placeholder="NUMBER, nom FR, nom EN...")
@@ -253,59 +283,84 @@ if st.session_state.current_page == "exigences":
             applicability_filter=edit_applicability_filter,
             include_archived=include_archived,
         )
-        st.caption(f"{len(rows)} exigence(s) trouvée(s). Cliquez sur une exigence pour la modifier.")
+        total_pages = max(1, ceil(len(rows) / PAGE_SIZE))
+        if st.session_state.search_page > total_pages:
+            st.session_state.search_page = total_pages
 
-        if rows:
-            for row in rows:
+        page_col1, page_col2, page_col3 = st.columns([1, 2, 1])
+        with page_col1:
+            if st.button("← Page précédente", disabled=st.session_state.search_page <= 1, use_container_width=True):
+                st.session_state.search_page -= 1
+        with page_col2:
+            st.markdown(
+                f"<div style='text-align:center; padding-top:0.4rem;'>Page {st.session_state.search_page} / {total_pages}</div>",
+                unsafe_allow_html=True,
+            )
+        with page_col3:
+            if st.button("Page suivante →", disabled=st.session_state.search_page >= total_pages, use_container_width=True):
+                st.session_state.search_page += 1
+
+        start = (st.session_state.search_page - 1) * PAGE_SIZE
+        visible_rows = rows[start : start + PAGE_SIZE]
+        st.caption(f"{len(rows)} exigence(s) trouvée(s). Affichage de {len(visible_rows)} résultat(s) sur cette page.")
+
+        if visible_rows:
+            for row in visible_rows:
                 row_label = f"{row['number']} — {row['french_name']}"
                 if st.button(row_label, key=f"edit_row_{row['row']}", use_container_width=True):
                     st.session_state.form_data = handler.load_requirement(sheet_name, row["row"])
                     st.session_state.selected_row = row["row"]
                     st.session_state.preview_data = None
-                    st.success(f"Exigence chargée : {row['number']}")
+                    st.session_state.current_page = "edit_requirement"
+                    st.rerun()
         else:
             st.info("Aucune exigence ne correspond aux filtres courants.")
-
-        if st.session_state.selected_row:
-            st.markdown("---")
-            st.subheader(f"Modification de l'exigence ligne {st.session_state.selected_row}")
-            current_number = st.session_state.form_data.get("number", "")
-            next_revision = compute_number_preview(st.session_state.form_data.get("type", ""), current_number)
-            st.info(f"Révision suivante : {next_revision}")
-
-            preview_btn, save_btn, clear_btn, collected = render_requirement_form(
-                form_key="edit_requirement_form",
-                submit_label="Enregistrer les modifications",
-                preview_label="Prévisualiser la modification",
-            )
-
-            if clear_btn:
-                st.session_state.form_data = {key: "" for key in FIELD_KEYS}
-                st.session_state.preview_data = None
-                st.session_state.selected_row = None
-                st.success("Formulaire de modification vidé.")
-
-            if preview_btn or save_btn:
-                cleaned, errors = process_form_submission(collected)
-                if errors:
-                    st.error("\n".join(errors))
-                else:
-                    st.session_state.preview_data = cleaned
-
-            render_preview()
-
-            if save_btn and st.session_state.preview_data:
-                updated_number = handler.update_requirement(
-                    sheet_name,
-                    st.session_state.selected_row,
-                    st.session_state.preview_data,
-                )
-                st.session_state.form_data["number"] = updated_number
-                st.session_state.preview_data = None
-                append_history(LOG_FILE, "UPDATE", st.session_state.selected_row, updated_number, sheet_name)
-                st.success(f"Exigence mise à jour. Nouveau NUMBER : {updated_number}")
     except ExcelHandlerError as exc:
         st.error(str(exc))
+
+if st.session_state.current_page == "edit_requirement" and st.session_state.selected_row:
+    header_col, back_col = st.columns([12, 1])
+    with header_col:
+        st.subheader(f"Modification de l'exigence ligne {st.session_state.selected_row}")
+    with back_col:
+        if st.button("←", help="Retour à la recherche"):
+            go_to_search_page()
+            st.rerun()
+
+    current_number = st.session_state.form_data.get("number", "")
+    next_revision = compute_number_preview(st.session_state.form_data.get("type", ""), current_number)
+    st.info(f"Révision suivante : {next_revision}")
+
+    preview_btn, save_btn, clear_btn, collected = render_requirement_form(
+        form_key="edit_requirement_form",
+        submit_label="Enregistrer les modifications",
+        preview_label="Prévisualiser la modification",
+    )
+
+    if clear_btn:
+        reset_form()
+        st.success("Formulaire de modification vidé.")
+        go_to_search_page()
+
+    if preview_btn or save_btn:
+        cleaned, errors = process_form_submission(collected)
+        if errors:
+            st.error("\n".join(errors))
+        else:
+            st.session_state.preview_data = cleaned
+
+    render_preview()
+
+    if save_btn and st.session_state.preview_data:
+        updated_number = handler.update_requirement(
+            sheet_name,
+            st.session_state.selected_row,
+            st.session_state.preview_data,
+        )
+        st.session_state.form_data["number"] = updated_number
+        st.session_state.preview_data = None
+        append_history(LOG_FILE, "UPDATE", st.session_state.selected_row, updated_number, sheet_name)
+        st.success(f"Exigence mise à jour. Nouveau NUMBER : {updated_number}")
 
 if st.session_state.current_page == "archivage":
     st.subheader("Mode archivage sécurisé")

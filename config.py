@@ -12,6 +12,8 @@ HEADER_ROWS = (5, 6)
 NUMBER_PREFIX = "REQ"
 NUMBER_SUFFIX_DEFAULT = 1
 TYPE_FREE_OPTION = "<Saisie libre>"
+MILESTONE_KEYS = ["sor", "pdr", "cdr", "tqr", "trr", "fai"]
+MILESTONE_MARK = "X"
 
 
 @dataclass(frozen=True)
@@ -42,12 +44,12 @@ COLUMN_DEFINITIONS: List[ColumnConfig] = [
     ColumnConfig("P", "remarks_p", "REMARKS"),
     ColumnConfig("Q", "decision", "DECISION"),
     ColumnConfig("R", "remarks_r", "REMARKS"),
-    ColumnConfig("S", "sor", "SOR", dropdown=True),
-    ColumnConfig("T", "pdr", "PDR", dropdown=True),
-    ColumnConfig("U", "cdr", "CDR", dropdown=True),
-    ColumnConfig("V", "tqr", "TQR", dropdown=True),
-    ColumnConfig("W", "trr", "TRR", dropdown=True),
-    ColumnConfig("X", "fai", "FAI", dropdown=True),
+    ColumnConfig("S", "sor", "SOR"),
+    ColumnConfig("T", "pdr", "PDR"),
+    ColumnConfig("U", "cdr", "CDR"),
+    ColumnConfig("V", "tqr", "TQR"),
+    ColumnConfig("W", "trr", "TRR"),
+    ColumnConfig("X", "fai", "FAI"),
 ]
 
 COLUMNS_BY_KEY: Dict[str, ColumnConfig] = {cfg.key: cfg for cfg in COLUMN_DEFINITIONS}
@@ -79,14 +81,9 @@ FIELD_KEYS = [
 
 DEFAULT_SELECT_OPTIONS = {
     "type": ["GEN", "AUT"],
+    "iadt": ["DEMONSTRATION"],
     "applicability": ["APPLICABLE", "NON APPLICABLE"],
     "coverage": ["COMPLIANT", "NOT COMPLIANT", "PARTIAL"],
-    "sor": ["", "OK", "KO", "N/A"],
-    "pdr": ["", "OK", "KO", "N/A"],
-    "cdr": ["", "OK", "KO", "N/A"],
-    "tqr": ["", "OK", "KO", "N/A"],
-    "trr": ["", "OK", "KO", "N/A"],
-    "fai": ["", "OK", "KO", "N/A"],
 }
 
 ARCHIVE_MARKER = "[ARCHIVED]"
@@ -97,5 +94,5 @@ SECTION_LAYOUT = {
     "Bloc 2 — Méthode / contexte": ["iadt", "chapter", "category", "sub_category", "config"],
     "Bloc 3 — Description": ["french_resume", "english_resume"],
     "Bloc 4 — Analyse": ["applicability", "remarks_n", "coverage", "remarks_p", "remarks_r"],
-    "Bloc 5 — Jalons projet": ["sor", "pdr", "cdr", "tqr", "trr", "fai"],
+    "Bloc 5 — Jalons projet": MILESTONE_KEYS,
 }

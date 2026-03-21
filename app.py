@@ -11,6 +11,8 @@ from config import (
     DEFAULT_WORKBOOK,
     FIELD_KEYS,
     LOG_FILE,
+    MILESTONE_KEYS,
+    MILESTONE_MARK,
     SECTION_LAYOUT,
     TYPE_FREE_OPTION,
 )
@@ -58,8 +60,6 @@ def compute_number_preview(type_value: str, fallback_number: str = "") -> str:
         return fallback_number
 
 
-current_type = st.session_state.form_data.get("type", "")
-number_preview = compute_number_preview(current_type, st.session_state.form_data.get("number", ""))
 st.caption(
     "Les nouvelles exigences sont toujours insérées en tête de la zone de données (ligne 7),"
     " sans utiliser les lignes vides existantes plus bas dans l'onglet."
@@ -102,15 +102,17 @@ def draw_input(key: str) -> str:
     default = st.session_state.form_data.get(key, "")
 
     if key == "number":
-        st.text_input(
-            "NUMBER (généré automatiquement)",
-            value=compute_number_preview(st.session_state.form_data.get("type", ""), default),
-            disabled=True,
-        )
-        return compute_number_preview(st.session_state.form_data.get("type", ""), default)
+        generated_number = compute_number_preview(st.session_state.form_data.get("type", ""), default)
+        st.text_input("NUMBER (généré automatiquement)", value=generated_number, disabled=True)
+        return generated_number
 
     if key == "type":
         return draw_type_selector(default)
+
+    if key in MILESTONE_KEYS:
+        checked = str(default).strip().upper() in {MILESTONE_MARK, "X", "✗", "TRUE", "1", "YES", "OUI"}
+        is_selected = st.checkbox(label, value=checked)
+        return MILESTONE_MARK if is_selected else ""
 
     choices = options.get(key)
     if choices:
@@ -137,6 +139,13 @@ with st.form("requirement_form"):
     collected: Dict[str, str] = {}
     for section, keys in SECTION_LAYOUT.items():
         st.subheader(section)
+        if section == "Bloc 5 — Jalons projet":
+            milestone_cols = st.columns(len(keys))
+            for idx, key in enumerate(keys):
+                with milestone_cols[idx]:
+                    collected[key] = draw_input(key)
+            continue
+
         cols = st.columns(2)
         for idx, key in enumerate(keys):
             with cols[idx % 2]:

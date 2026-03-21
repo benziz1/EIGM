@@ -10,6 +10,8 @@ Application locale Streamlit pour saisir/mettre à jour des exigences dans un fi
 - Le champ `NUMBER` n'est plus saisi manuellement : il est généré automatiquement à partir du `TYPE` sélectionné.
 - Le format généré est `REQ_type_XXX_XX`, par exemple `REQ_GEN_012_01`.
 - Le `TYPE` d'identification propose `GEN`, `AUT` ou une saisie libre.
+- Le champ `IADT` propose maintenant `DEMONSTRATION` en valeur suggérée.
+- Le bloc 5 utilise des cases à cocher (une par jalon) qui écrivent une croix `X` dans Excel lorsqu'elles sont cochées.
 - Prévisualisation avant insertion.
 - Copie du style/format/formules de la ligne précédemment en tête vers la nouvelle ligne.
 - Incrémentation automatique de la colonne `A (#)` à partir du maximum déjà présent.
@@ -57,7 +59,7 @@ streamlit run app.py
 1. Vérifier dans la barre latérale le chemin du fichier Excel et l'onglet cible (`V00` par défaut).
 2. Sélectionner le `TYPE` d'identification (`GEN`, `AUT` ou saisie libre).
 3. Vérifier le `NUMBER` généré automatiquement dans le bloc 1.
-4. Remplir les autres champs par blocs.
+4. Remplir les autres champs par blocs, puis cocher les jalons du bloc 5 à marquer par une croix dans Excel.
 5. Cliquer **Prévisualiser la ligne avant insertion**.
 6. Cliquer **Ajouter la ligne**.
 7. En cas de succès, la ligne est écrite en tête de la zone de données et journalisée.
@@ -70,6 +72,7 @@ streamlit run app.py
 - La nouvelle ligne réutilise la ligne qui était précédemment en tête comme modèle (style + format + formules).
 - La formule en Q est recopiée et adaptée automatiquement (translation de référence).
 - Les champs saisis utilisateur écrasent uniquement les colonnes métiers prévues.
+- Les jalons `SOR` à `FAI` sont alimentés par cases à cocher et écrivent `X` si cochés, sinon une cellule vide.
 - Le `NUMBER` suit la forme `REQ_<TYPE>_<index sur 3 chiffres>_01`.
 
 ## Limites connues

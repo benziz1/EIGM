@@ -266,6 +266,16 @@ def inject_theme(theme_name: str) -> None:
         """,
         unsafe_allow_html=True,
     )
+def render_logo_banner() -> None:
+    st.markdown(
+        """
+        <div class="brand-banner">
+            <div class="brand-name">THALES<span class="brand-dot">•</span></div>
+            <div class="brand-tagline"><span class="brand-tagline-accent">Construisons ensemble</span> un avenir de confiance</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 st.set_page_config(page_title="Requirement Entry", layout="wide")
 workbook_path = Path(st.sidebar.text_input("Fichier Excel", str(DEFAULT_WORKBOOK)))
 handler = ExcelHandler(workbook_path)
@@ -432,16 +442,6 @@ def process_form_submission(collected: Dict[str, str]) -> tuple[Dict[str, str], 
     if not cleaned.get("number"):
         errors.append("Le NUMBER n'a pas pu être généré automatiquement. Vérifiez le TYPE.")
     return cleaned, errors
-def render_logo_banner() -> None:
-    st.markdown(
-        """
-        <div class="brand-banner">
-            <div class="brand-name">THALES<span class="brand-dot">•</span></div>
-            <div class="brand-tagline"><span class="brand-tagline-accent">Construisons ensemble</span> un avenir de confiance</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 def render_preview() -> None:
     if st.session_state.preview_data:

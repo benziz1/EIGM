@@ -20,6 +20,8 @@ from config import (
     NUMBER_SUFFIX_DEFAULT,
 )
 
+NUMBER_REGEX = re.compile(rf"^{NUMBER_PREFIX}_(?P<type>[A-Za-z0-9]+)_(?P<sequence>\d{{3}})_(?P<revision>\d{{2}})$")
+
 
 class ExcelHandlerError(Exception):
     """Raised when workbook operations fail."""
@@ -68,9 +70,19 @@ class ExcelHandler:
         return normalized
 
     @classmethod
-    def _build_number(cls, type_value: str, next_index: int) -> str:
+    def _build_number(cls, type_value: str, next_index: int, revision: int = NUMBER_SUFFIX_DEFAULT) -> str:
         normalized_type = cls._normalize_type(type_value)
-        return f"{NUMBER_PREFIX}_{normalized_type}_{next_index:03d}_{NUMBER_SUFFIX_DEFAULT:02d}"
+        return f"{NUMBER_PREFIX}_{normalized_type}_{next_index:03d}_{revision:02d}"
+
+    @classmethod
+    def _increment_number_revision(cls, current_number: str, type_value: str) -> str:
+        match = NUMBER_REGEX.match(str(current_number or "").strip())
+        normalized_type = cls._normalize_type(type_value)
+        if match:
+            sequence = int(match.group("sequence"))
+            revision = int(match.group("revision")) + 1
+            return cls._build_number(normalized_type, sequence, revision)
+        return cls._build_number(normalized_type, 1, 1)
 
     def preview_next_number(self, sheet_name: str, type_value: str) -> str:
         wb = self._load_workbook()
@@ -79,6 +91,9 @@ class ExcelHandler:
         number = self._build_number(type_value, next_index)
         wb.close()
         return number
+
+    def preview_updated_number(self, current_number: str, type_value: str) -> str:
+        return self._increment_number_revision(current_number, type_value)
 
     def list_sheets(self) -> List[str]:
         wb = self._load_workbook()
@@ -151,28 +166,56 @@ class ExcelHandler:
         wb.close()
         return insert_row
 
-    def search_requirements(self, sheet_name: str, keyword: str) -> List[Dict[str, str]]:
+    def list_requirements(
+        self,
+        sheet_name: str,
+        keyword: str = "",
+        type_filter: str = "",
+        applicability_filter: str = "",
+        include_archived: bool = True,
+    ) -> List[Dict[str, str]]:
         wb = self._load_workbook()
         sheet = self._get_sheet(wb, sheet_name)
         last_row = self._last_data_row(sheet)
         keyword_lower = keyword.lower().strip()
+        type_filter_upper = type_filter.upper().strip()
+        applicability_filter_upper = applicability_filter.upper().strip()
         results: List[Dict[str, str]] = []
 
         for row in range(DATA_START_ROW, last_row + 1):
             number = str(sheet[f"B{row}"].value or "")
             french_name = str(sheet[f"C{row}"].value or "")
             english_name = str(sheet[f"D{row}"].value or "")
-            if keyword_lower in number.lower() or keyword_lower in french_name.lower() or keyword_lower in english_name.lower():
-                results.append(
-                    {
-                        "row": row,
-                        "number": number,
-                        "french_name": french_name,
-                        "english_name": english_name,
-                    }
-                )
+            type_value = str(sheet[f"E{row}"].value or "")
+            applicability = str(sheet[f"M{row}"].value or "")
+            archived = french_name.startswith(ARCHIVE_MARKER)
+
+            haystack = " ".join([number, french_name, english_name, type_value, applicability]).lower()
+            if keyword_lower and keyword_lower not in haystack:
+                continue
+            if type_filter_upper and type_value.upper() != type_filter_upper:
+                continue
+            if applicability_filter_upper and applicability.upper() != applicability_filter_upper:
+                continue
+            if not include_archived and archived:
+                continue
+
+            results.append(
+                {
+                    "row": row,
+                    "number": number,
+                    "french_name": french_name,
+                    "english_name": english_name,
+                    "type": type_value,
+                    "applicability": applicability,
+                    "archived": archived,
+                }
+            )
         wb.close()
         return results
+
+    def search_requirements(self, sheet_name: str, keyword: str) -> List[Dict[str, str]]:
+        return self.list_requirements(sheet_name=sheet_name, keyword=keyword)
 
     def load_requirement(self, sheet_name: str, row: int) -> Dict[str, str]:
         wb = self._load_workbook()
@@ -181,12 +224,16 @@ class ExcelHandler:
         wb.close()
         return data
 
-    def update_requirement(self, sheet_name: str, row: int, payload: Dict[str, str]) -> None:
+    def update_requirement(self, sheet_name: str, row: int, payload: Dict[str, str]) -> str:
         wb = self._load_workbook()
         sheet = self._get_sheet(wb, sheet_name)
-        self._apply_payload(sheet, row, payload)
+        payload_with_number = dict(payload)
+        current_number = str(sheet[f"B{row}"].value or payload_with_number.get("number", ""))
+        payload_with_number["number"] = self._increment_number_revision(current_number, payload_with_number.get("type", ""))
+        self._apply_payload(sheet, row, payload_with_number)
         wb.save(self.workbook_path)
         wb.close()
+        return payload_with_number["number"]
 
     def archive_requirement(self, sheet_name: str, row: int) -> None:
         wb = self._load_workbook()

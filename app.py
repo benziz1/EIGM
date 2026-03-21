@@ -51,7 +51,13 @@ if "selected_row" not in st.session_state:
 
 def compute_number_preview(type_value: str, fallback_number: str = "") -> str:
     if mode == "Édition" and st.session_state.selected_row:
-        return fallback_number or st.session_state.form_data.get("number", "")
+        current_number = fallback_number or st.session_state.form_data.get("number", "")
+        if not current_number:
+            return ""
+        try:
+            return handler.preview_updated_number(current_number, type_value or st.session_state.form_data.get("type", ""))
+        except ExcelHandlerError:
+            return current_number
     if not type_value.strip():
         return ""
     try:
@@ -102,9 +108,10 @@ def draw_input(key: str) -> str:
     default = st.session_state.form_data.get(key, "")
 
     if key == "number":
-        generated_number = compute_number_preview(st.session_state.form_data.get("type", ""), default)
-        st.text_input("NUMBER (généré automatiquement)", value=generated_number, disabled=True)
-        return generated_number
+        preview_number = compute_number_preview(st.session_state.form_data.get("type", ""), default)
+        help_text = "En création : suffixe 00. En modification : le suffixe final est incrémenté automatiquement."
+        st.text_input("NUMBER (généré automatiquement)", value=preview_number, disabled=True, help=help_text)
+        return preview_number
 
     if key == "type":
         return draw_type_selector(default)
@@ -191,29 +198,61 @@ if add_btn and st.session_state.preview_data:
 
 if mode == "Édition":
     st.markdown("---")
-    st.subheader("Mode édition")
-    keyword = st.text_input("Rechercher (NUMBER / FRENCH NAME / ENGLISH NAME)")
-    if keyword:
-        try:
-            rows = handler.search_requirements(sheet_name, keyword)
-            if not rows:
-                st.info("Aucun résultat.")
-            else:
-                labels = [f"Ligne {r['row']} - {r['number']} - {r['french_name']}" for r in rows]
-                choice = st.selectbox("Résultats", labels)
-                selected = rows[labels.index(choice)]
+    st.subheader("Modification d'exigences")
+    filter_col1, filter_col2, filter_col3 = st.columns(3)
+    with filter_col1:
+        edit_keyword = st.text_input("Recherche globale", placeholder="NUMBER, nom FR, nom EN...")
+    with filter_col2:
+        type_filter_values = [""] + list(dict.fromkeys(options.get("type", [])))
+        edit_type_filter = st.selectbox("Filtre TYPE", type_filter_values, format_func=lambda x: x or "Tous")
+    with filter_col3:
+        applicability_filter_values = [""] + list(dict.fromkeys(options.get("applicability", [])))
+        edit_applicability_filter = st.selectbox(
+            "Filtre APPLICABILITY",
+            applicability_filter_values,
+            format_func=lambda x: x or "Tous",
+        )
+
+    include_archived = st.checkbox("Inclure les exigences archivées", value=False)
+
+    try:
+        rows = handler.list_requirements(
+            sheet_name=sheet_name,
+            keyword=edit_keyword,
+            type_filter=edit_type_filter,
+            applicability_filter=edit_applicability_filter,
+            include_archived=include_archived,
+        )
+        st.caption(f"{len(rows)} exigence(s) trouvée(s).")
+        if rows:
+            st.dataframe(rows, use_container_width=True)
+            labels = [f"Ligne {r['row']} - {r['number']} - {r['french_name']}" for r in rows]
+            choice = st.selectbox("Liste des exigences", labels)
+            selected = rows[labels.index(choice)]
+            st.session_state.selected_row = selected["row"]
+            info_col1, info_col2 = st.columns(2)
+            with info_col1:
+                st.info(f"Exigence sélectionnée : {selected['number']}")
+            with info_col2:
+                next_revision = compute_number_preview(selected.get("type", ""), selected.get("number", ""))
+                st.info(f"Prochaine révision si modifiée : {next_revision}")
+
+            if st.button("Charger l'exigence dans le formulaire"):
+                st.session_state.form_data = handler.load_requirement(sheet_name, selected["row"])
                 st.session_state.selected_row = selected["row"]
-                if st.button("Charger dans le formulaire"):
-                    st.session_state.form_data = handler.load_requirement(sheet_name, selected["row"])
-                    st.session_state.preview_data = None
-                    st.success("Données chargées dans le formulaire principal.")
-                if st.button("Sauvegarder mise à jour depuis le formulaire"):
-                    payload = sanitize_payload(st.session_state.form_data)
-                    handler.update_requirement(sheet_name, selected["row"], payload)
-                    append_history(LOG_FILE, "UPDATE", selected["row"], payload.get("number", ""), sheet_name)
-                    st.success("Ligne mise à jour.")
-        except ExcelHandlerError as exc:
-            st.error(str(exc))
+                st.session_state.preview_data = None
+                st.success("Données chargées dans le formulaire principal.")
+
+            if st.button("Enregistrer les modifications du formulaire"):
+                payload = sanitize_payload(st.session_state.form_data)
+                updated_number = handler.update_requirement(sheet_name, selected["row"], payload)
+                st.session_state.form_data["number"] = updated_number
+                append_history(LOG_FILE, "UPDATE", selected["row"], updated_number, sheet_name)
+                st.success(f"Exigence mise à jour. Nouveau NUMBER : {updated_number}")
+        else:
+            st.info("Aucune exigence ne correspond aux filtres courants.")
+    except ExcelHandlerError as exc:
+        st.error(str(exc))
 
 if mode == "Archivage":
     st.markdown("---")

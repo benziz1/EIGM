@@ -8,7 +8,7 @@ Application locale Streamlit pour saisir/mettre à jour des exigences dans un fi
 - Les nouvelles exigences sont insérées **tout en haut de la zone de données** (ligne 7), en décalant les lignes existantes vers le bas.
 - Les lignes vides plus bas dans l'onglet sont ignorées pendant l'ajout.
 - Le champ `NUMBER` n'est plus saisi manuellement : il est généré automatiquement à partir du `TYPE` sélectionné.
-- Le format généré est `REQ_type_XXX_XX`, par exemple `REQ_GEN_012_01`.
+- Le format généré est `REQ_type_XXX_XX`, par exemple `REQ_GEN_012_00` à la création.
 - Le `TYPE` d'identification propose `GEN`, `AUT` ou une saisie libre.
 - Le champ `IADT` propose maintenant `DEMONSTRATION` en valeur suggérée.
 - Le bloc 5 utilise des cases à cocher (une par jalon) qui écrivent une croix `X` dans Excel lorsqu'elles sont cochées.
@@ -18,7 +18,7 @@ Application locale Streamlit pour saisir/mettre à jour des exigences dans un fi
 - Recopie des formules (dont `Q: DECISION`) via translation de références.
 - Validation des champs obligatoires.
 - Listes déroulantes dynamiques (valeurs existantes de l'onglet + valeurs par défaut).
-- Mode édition (recherche + chargement + sauvegarde).
+- Mode édition enrichi avec liste complète des exigences, filtres de recherche, chargement dans le formulaire et sauvegarde.
 - Mode archivage sécurisé (marquage `[ARCHIVED]` sur le nom FR).
 - Historique CSV (`history_log.csv`) : date, utilisateur, action, onglet, ligne.
 
@@ -63,6 +63,7 @@ streamlit run app.py
 5. Cliquer **Prévisualiser la ligne avant insertion**.
 6. Cliquer **Ajouter la ligne**.
 7. En cas de succès, la ligne est écrite en tête de la zone de données et journalisée.
+8. En mode édition, utiliser la recherche globale et les filtres pour afficher la liste des exigences, en charger une puis enregistrer ses modifications.
 
 ## Comportement Excel
 
@@ -73,7 +74,8 @@ streamlit run app.py
 - La formule en Q est recopiée et adaptée automatiquement (translation de référence).
 - Les champs saisis utilisateur écrasent uniquement les colonnes métiers prévues.
 - Les jalons `SOR` à `FAI` sont alimentés par cases à cocher et écrivent `X` si cochés, sinon une cellule vide.
-- Le `NUMBER` suit la forme `REQ_<TYPE>_<index sur 3 chiffres>_01`.
+- Le `NUMBER` suit la forme `REQ_<TYPE>_<index sur 3 chiffres>_00` à la création.
+- Lors d'une modification, les deux derniers chiffres du `NUMBER` sont incrémentés automatiquement (`00` → `01` → `02`, etc.).
 
 ## Limites connues
 

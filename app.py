@@ -226,14 +226,7 @@ def inject_theme(theme_name: str) -> None:
             font-size: 0.92rem;
         }}
         .history-tooltip {{
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            position: absolute;
-            left: 1rem;
-            right: 1rem;
-            top: calc(100% + 0.35rem);
-            z-index: 30;
+            display: none;
             background: {colors['surface_alt']};
             color: {colors['text']};
             border: 1px solid {colors['border']};
@@ -241,10 +234,11 @@ def inject_theme(theme_name: str) -> None:
             padding: 0.7rem 0.8rem;
             box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
             white-space: normal;
+            margin-top: 0.65rem;
+            line-height: 1.45;
         }}
         .history-entry:hover .history-tooltip {{
-            visibility: visible;
-            opacity: 1;
+            display: block;
         }}
         </style>
         """,

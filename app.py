@@ -196,6 +196,19 @@ def inject_theme(theme_name: str) -> None:
             color: {colors['text']} !important;
             fill: {colors['text']} !important;
         }}
+        [data-baseweb="menu"],
+        [role="menu"] {{
+            background: {colors['surface']} !important;
+            border: 1px solid {colors['border']} !important;
+        }}
+        [data-baseweb="menu"] *,
+        [role="menu"] *,
+        [role="menuitem"] *,
+        [data-baseweb="menu"] svg,
+        [role="menu"] svg {{
+            color: {colors['text']} !important;
+            fill: {colors['text']} !important;
+        }}
         .history-entry {{
             position: relative;
             background: {colors['surface']};
@@ -460,10 +473,11 @@ if st.session_state.current_page == "saisie":
             st.error(str(exc))
 if st.session_state.current_page == "exigences":
     st.subheader("Exigences")
-    st.markdown('<div class="theme-muted">Recherche, filtrage et accès rapide à la création d\'une nouvelle exigence.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="theme-muted">Créez rapidement une nouvelle exigence depuis cette page.</div>', unsafe_allow_html=True)
     if st.button("Ajouter une exigence", type="primary", use_container_width=True):
         go_to_add_page()
     st.markdown("### Recherche et modification d'exigence")
+    st.markdown('<div class="theme-muted">Recherchez, filtrez puis modifiez les exigences existantes.</div>', unsafe_allow_html=True)
     filter_col1, filter_col2, filter_col3 = st.columns(3)
     with filter_col1:
         edit_keyword = st.text_input("Recherche globale", placeholder="NUMBER, nom FR, nom EN...")

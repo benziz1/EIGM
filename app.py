@@ -39,8 +39,8 @@ def describe_payload_changes(previous_payload: Dict[str, str], current_payload: 
         after = str(current_payload.get(key, "") or "").strip()
         if before != after:
             label = COLUMNS_BY_KEY[key].label
-            changes.append(f"{label}: '{before or '∅'}' → '{after or '∅'}'")
-    return " | ".join(changes) if changes else "Aucune différence métier détectée"
+            changes.append(f"{label} — avant : '{before or '∅'}' → après : '{after or '∅'}'")
+    return "\n".join(changes) if changes else "Aucune différence métier détectée"
 def read_history(log_file: Path, limit: int = 20, number_base_filter: str = "") -> list[Dict[str, str]]:
     if hasattr(utils, "read_history"):
         return utils.read_history(log_file, limit=limit, number_base_filter=number_base_filter)
@@ -421,7 +421,7 @@ def render_history_entries(entries: list[Dict[str, str]]) -> None:
     cards = []
     for entry in entries:
         details = entry.get("changes", "") or entry.get("action", "")
-        tooltip_body = escape(details, quote=True).replace(" | ", "<br>")
+        tooltip_body = escape(details, quote=True).replace("\n", "<br>").replace(" | ", "<br>")
         tooltip_title = escape(details.replace(" | ", "\n"), quote=True)
         cards.append(
             f"""
@@ -576,7 +576,11 @@ if st.session_state.current_page == "edit_requirement" and st.session_state.sele
         updated_payload = dict(st.session_state.preview_data)
         st.session_state.form_data["number"] = updated_number
         changes = describe_payload_changes(st.session_state.original_form_data, updated_payload)
-        changes = f"Version: {current_number} → {updated_number} | {changes}"
+        changes = (
+            f"Version précédente : {current_number}\n"
+            f"Nouvelle version : {updated_number}\n"
+            f"{changes}"
+        )
         append_history(LOG_FILE, "UPDATE", st.session_state.selected_row, updated_number, sheet_name, changes=changes)
         st.session_state.original_form_data = dict(updated_payload)
         st.session_state.original_form_data["number"] = updated_number

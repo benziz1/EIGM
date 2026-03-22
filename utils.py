@@ -60,8 +60,8 @@ def describe_payload_changes(previous_payload: Dict[str, str], current_payload: 
         after = str(current_payload.get(key, "") or "").strip()
         if before != after:
             label = COLUMNS_BY_KEY[key].label
-            changes.append(f"{label}: '{before or '∅'}' → '{after or '∅'}'")
-    return " | ".join(changes) if changes else "Aucune différence métier détectée"
+            changes.append(f"{label} — avant : '{before or '∅'}' → après : '{after or '∅'}'")
+    return "\n".join(changes) if changes else "Aucune différence métier détectée"
 
 
 def append_history(
